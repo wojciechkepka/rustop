@@ -1,6 +1,7 @@
 use std::fs;
 use regex::Regex;
 use std::{thread, time};
+use std::collections::HashMap;
 
 struct Pc {
     hostname: String,
@@ -11,21 +12,60 @@ struct Pc {
     memory: u64,
     free_memory: u64,
     swap: u64,
-    free_swap: u64
+    free_swap: u64,
+    network_dev: Vec<HashMap<String, String>>
 }
 
 impl Pc {
     fn display_info(&self) {
-        println!("----------------------------------");
-        println!("HOSTNAME:         {}", self.hostname);
-        println!("KERNEL VERSION:   {}", self.kernel_version);
-        println!("UPTIME:           {}", conv_t(self.uptime));
-        println!("CPU:              {}", self.cpu);
-        println!("CPU CLOCK:        {:.2} MHz", self.cpu_clock);
-        println!("MEM:              {}  {}", conv_b(self.memory), self.memory);
-        println!("MEMFREE:          {}  {}  {}%", conv_b(self.free_memory), self.free_memory, conv_p(self.memory, self.free_memory));
-        println!("SWAP:              {}   {}", conv_b(self.swap), self.swap);
-        println!("SWAPFREE:          {}   {}  {}%", conv_b(self.free_swap), self.free_swap, conv_p(self.swap, self.free_swap));
+        println!("───────────────────────────────────");
+        println!("│HOSTNAME:         {}", self.hostname);
+        println!("│KERNEL VERSION:   {}", self.kernel_version);
+        println!("│UPTIME:           {}", conv_t(self.uptime));
+        println!("│CPU:              {}", self.cpu);
+        println!("│CPU CLOCK:        {:.2} MHz", self.cpu_clock);
+        println!("│MEM:              {}  {}", conv_b(self.memory), self.memory);
+        println!("│MEMFREE:          {}  {}  {}%", conv_b(self.free_memory), self.free_memory, conv_p(self.memory, self.free_memory));
+        println!("│SWAP:              {}   {}", conv_b(self.swap), self.swap);
+        println!("│SWAPFREE:          {}   {}  {}%", conv_b(self.free_swap), self.free_swap, conv_p(self.swap, self.free_swap));
+        println!("│NETWORK DEVICES:");
+        for interface in &self.network_dev {
+            let interface_name = match interface.get(&String::from("name")) {
+                Some(n) => n,
+                _ => ""
+            };
+            let received = match interface.get(&String::from("receive-bytes")) {
+                Some(n) => {
+                    match n.parse::<u64>() {
+                        Ok(m) => m,
+                        Err(e) => {
+                            println!("{}", e);
+                            0
+                        }
+                    }
+                }
+                _ => {
+                    0
+                }
+            };
+            let transfered = match interface.get(&String::from("transfered-bytes")) {
+                Some(n) => {
+                    match n.parse::<u64>() {
+                        Ok(m) => m,
+                        Err(e) => {
+                            println!("{}", e);
+                            0
+                        }
+                    }
+                }
+                _ => {
+                    0
+                }
+            };
+            println!("  ├─{}─────────────────────────", interface_name);
+            println!("  │     DOWN:     {}      {}", conv_b(received), received);
+            println!("  │     UP:       {}      {}", conv_b(transfered), transfered);
+        }
     }
 
     fn get_hostname() -> String{
@@ -126,12 +166,8 @@ impl Pc {
     fn get_cpu_info() -> String {
         match fs::read_to_string("/proc/cpuinfo") {
             Ok(res) => {
-                // println!("{}", res);
                 let re = Regex::new(r"model name\s*: (.*)").unwrap();
                 let data = re.captures(&res).unwrap();
-                // for i in re.captures_iter(&res) {
-                //     println!("{}", &i[0])
-                // }
                 String::from(&data[1])
             },
             Err(e) => {
@@ -165,6 +201,31 @@ impl Pc {
             }
         }
     }
+
+    fn get_network_dev() -> Vec<HashMap<String, String>> {
+        let mut devices = Vec::new();
+        match fs::read_to_string("/proc/net/dev") {
+            Ok(res) => {
+                let re = Regex::new(r"([\d\w]*):\s*(\d*)\s*\d*\s*\d*\s*\d*\s*\d*\s*\d*\s*\d*\s*\d*\s*(\d*)").unwrap();
+                for network_dev in re.captures_iter(&res) {
+                    let mut interface = HashMap::new();
+                    let interface_name = &network_dev[1];
+                    let receive = &network_dev[2];
+                    let transfered = &network_dev[3];
+
+                    interface.insert(String::from("name"), String::from(interface_name));
+                    interface.insert(String::from("receive-bytes"), String::from(receive));
+                    interface.insert(String::from("transfered-bytes"), String::from(transfered));
+                    devices.push(interface);
+                }
+                devices
+            },
+            Err(e) => {
+                println!("Error - {}", e);
+                devices
+            }
+        }
+    }    
 }
 
 fn conv_p(total: u64, free: u64) -> u64 {
@@ -220,7 +281,7 @@ fn conv_t(sec: f64) -> String {
 
 fn main() {
     loop {
-        // print!("{}[2J", 27 as char);
+        print!("{}[2J", 27 as char);
         let p = Pc {
             hostname: Pc::get_hostname(),
             kernel_version: Pc::get_kernelv(),
@@ -230,7 +291,8 @@ fn main() {
             memory: Pc::get_memory_total(),
             free_memory: Pc::get_memory_free(),
             swap: Pc::get_swap_total(),
-            free_swap: Pc::get_swap_free()
+            free_swap: Pc::get_swap_free(),
+            network_dev: Pc::get_network_dev()
 
         };
         p.display_info();
