@@ -378,6 +378,8 @@ impl Pc {
             }
         }
     }
+
+    
 }
 
 fn conv_p(total: u64, free: u64) -> u64 {
@@ -432,23 +434,23 @@ fn conv_t(sec: f64) -> String {
 }
 
 fn main() {
-    loop {
+    // loop {
         // print!("{}[2J", 27 as char);
-        let p = Pc {
-            hostname: Pc::get_hostname(),
-            kernel_version: Pc::get_kernelv(),
-            uptime: Pc::get_uptime(),
-            cpu: Pc::get_cpu_info(),
-            cpu_clock: Pc::get_cpu_clock(),
-            memory: Pc::get_memory_total(),
-            free_memory: Pc::get_memory_free(),
-            swap: Pc::get_swap_total(),
-            free_swap: Pc::get_swap_free(),
-            network_dev: Pc::get_network_dev(),
-            storage_dev: Pc::get_storage_dev(),
-            partitions: Pc::get_storage_partitions(Pc::get_storage_dev())
-        };
-        p.display_info();
-        thread::sleep(time::Duration::from_secs(1));
-    }
+    let p = Pc {
+        hostname: Pc::get_hostname(),
+        kernel_version: Pc::get_kernelv(),
+        uptime: Pc::get_uptime(),
+        cpu: Pc::get_cpu_info(),
+        cpu_clock: Pc::get_cpu_clock(),
+        memory: Pc::get_memory_total(),
+        free_memory: Pc::get_memory_free(),
+        swap: Pc::get_swap_total(),
+        free_swap: Pc::get_swap_free(),
+        network_dev: Pc::get_network_dev(),
+        storage_dev: Pc::get_storage_dev(),
+        partitions: Pc::get_storage_partitions(Pc::get_storage_dev())
+    };
+    p.display_info();
+        // thread::sleep(time::Duration::from_secs(1));
+    // }
 }
