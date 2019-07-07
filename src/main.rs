@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::fs;
 use regex::Regex;
 
+#[derive(Debug)]
 struct Partition {
     name: String,
     major: u8,
@@ -11,7 +12,6 @@ struct Partition {
     filesystem: String,
     mountpoint: String
 }
-
 impl Partition {
     fn new() -> Partition {
         Partition {
@@ -25,6 +25,7 @@ impl Partition {
     }
 }
 
+#[derive(Debug)]
 struct NetworkDevice {
     name: String,
     received_bytes: u64,
@@ -40,13 +41,13 @@ impl NetworkDevice {
     }
 }
 
+#[derive(Debug)]
 struct Storage {
     name: String,
     major: u8,
     minor: u8,
     size: u64,
 }
-
 impl Storage {
     fn new() -> Storage {
         Storage {
@@ -65,7 +66,8 @@ enum Memory {
     MemoryFree
 }
 
-struct Pc {
+#[derive(Debug)]
+struct PcInfo {
     hostname: String,
     kernel_version: String,
     uptime: f64,
@@ -79,23 +81,43 @@ struct Pc {
     storage_dev: Vec<Storage>,
     partitions: HashMap<String, Vec<Partition>>
 }
+impl PcInfo {
+    fn new() -> PcInfo {
+        PcInfo {
+            hostname: Process::hostname(),
+            kernel_version: Process::kernelv(),
+            uptime: Process::uptime(),
+            cpu: Process::cpu_info(),
+            cpu_clock: Process::cpu_clock(),
+            memory: Process::mem(Memory::MemoryTotal),
+            free_memory: Process::mem(Memory::MemoryFree),
+            swap: Process::mem(Memory::SwapTotal),
+            free_swap: Process::mem(Memory::SwapFree),
+            network_dev: Process::network_dev(),
+            storage_dev: Process::storage_dev(),
+            partitions: Process::storage_partitions(Process::storage_dev())
+        }
+    }
+}
 
-impl Pc {
-    fn get_hostname() -> String{
+#[derive(Debug)]
+struct Process;
+impl Process {
+    fn hostname() -> String{
         match fs::read_to_string("/proc/sys/kernel/hostname") {
             Ok(hostname) => String::from(hostname.trim_end()),
             _ => String::from("null")
         }
     }
 
-    fn get_kernelv() -> String{
+    fn kernelv() -> String{
         match fs::read_to_string("/proc/sys/kernel/osrelease") {
             Ok(kern_v) => String::from(kern_v.trim_end()),
             _ => String::from("null")
         }
     }
 
-    fn get_uptime() -> f64{
+    fn uptime() -> f64{
         match fs::read_to_string("/proc/uptime") {
             Ok(res) => {
                 let data: Vec<&str> = res.split(' ').collect();
@@ -108,7 +130,7 @@ impl Pc {
         }
     }
 
-    fn get_mem(target: Memory) -> u64 {
+    fn mem(target: Memory) -> u64 {
         match fs::read_to_string("/proc/meminfo") {
             Ok(res) => {
                 let re = match target {
@@ -130,7 +152,7 @@ impl Pc {
         }
     } 
 
-    fn get_cpu_info() -> String {
+    fn cpu_info() -> String {
         match fs::read_to_string("/proc/cpuinfo") {
             Ok(res) => {
                 let re = Regex::new(r"model name\s*: (.*)").unwrap();
@@ -144,7 +166,7 @@ impl Pc {
         }
     }
 
-    fn get_cpu_clock() -> f32 {
+    fn cpu_clock() -> f32 {
         match fs::read_to_string("/proc/cpuinfo") {
             Ok(res) => {
                 // println!("{}", res);
@@ -169,7 +191,7 @@ impl Pc {
         }
     }
 
-    fn get_network_dev() -> Vec<NetworkDevice> {
+    fn network_dev() -> Vec<NetworkDevice> {
         let mut devices = Vec::new();
         match fs::read_to_string("/proc/net/dev") {
             Ok(res) => {
@@ -198,7 +220,7 @@ impl Pc {
         }
     }
 
-    fn get_storage_dev() -> Vec<Storage> {
+    fn storage_dev() -> Vec<Storage> {
         let mut devices = Vec::new();
         match fs::read_to_string("/proc/partitions") {
             Ok(res) => {
@@ -233,7 +255,7 @@ impl Pc {
         }
     }
 
-    fn get_storage_partitions(storage_dev: Vec<Storage>) -> HashMap<String, Vec<Partition>> {
+    fn storage_partitions(storage_dev: Vec<Storage>) -> HashMap<String, Vec<Partition>> {
         let mut devices = HashMap::new();
         match fs::read_to_string("/proc/partitions") {
             Ok(res) => {
@@ -299,8 +321,9 @@ impl Pc {
         }
     }
 }
-fn display_info(pc: Pc) {
-    println!("────────────────────────────────────");
+
+fn display_info(pc: PcInfo) {
+    println!("====================================");
     println!("│HOSTNAME:         {}", pc.hostname);
     println!("│KERNEL VERSION:   {}", pc.kernel_version);
     println!("│UPTIME:           {}", conv_t(pc.uptime));
@@ -388,22 +411,8 @@ fn conv_t(sec: f64) -> String {
 
 fn main() {
 // loop {
-    // print!("{}[2J", 27 as char);
-    let p = Pc {
-        hostname: Pc::get_hostname(),
-        kernel_version: Pc::get_kernelv(),
-        uptime: Pc::get_uptime(),
-        cpu: Pc::get_cpu_info(),
-        cpu_clock: Pc::get_cpu_clock(),
-        memory: Pc::get_mem(Memory::MemoryTotal),
-        free_memory: Pc::get_mem(Memory::MemoryFree),
-        swap: Pc::get_mem(Memory::SwapTotal),
-        free_swap: Pc::get_mem(Memory::SwapFree),
-        network_dev: Pc::get_network_dev(),
-        storage_dev: Pc::get_storage_dev(),
-        partitions: Pc::get_storage_partitions(Pc::get_storage_dev())
-    };
-    display_info(p);
-    // thread::sleep(time::Duration::from_secs(1));
+// print!("{}[2J", 27 as char);
+    display_info(PcInfo::new());
+// thread::sleep(time::Duration::from_secs(1));
 // }
 }
