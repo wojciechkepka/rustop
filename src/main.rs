@@ -1,7 +1,7 @@
-use std::fs;
-use regex::Regex;
 use std::{thread, time};
 use std::collections::HashMap;
+use std::fs;
+use regex::Regex;
 
 struct Partition {
     name: String,
@@ -30,7 +30,6 @@ struct NetworkDevice {
     received_bytes: u64,
     transfered_bytes: u64,
 }
-
 impl NetworkDevice {
     fn new() -> NetworkDevice {
         NetworkDevice {
@@ -59,6 +58,13 @@ impl Storage {
     }
 }
 
+enum Memory {
+    SwapTotal,
+    SwapFree,
+    MemoryTotal,
+    MemoryFree
+}
+
 struct Pc {
     hostname: String,
     kernel_version: String,
@@ -75,42 +81,6 @@ struct Pc {
 }
 
 impl Pc {
-    fn display_info(&self) {
-        println!("────────────────────────────────────");
-        println!("│HOSTNAME:         {}", self.hostname);
-        println!("│KERNEL VERSION:   {}", self.kernel_version);
-        println!("│UPTIME:           {}", conv_t(self.uptime));
-        println!("│CPU:              {}", self.cpu);
-        println!("│CPU CLOCK:        {:.2} MHz", self.cpu_clock);
-        println!("│MEM:              {}  {}", conv_b(self.memory), self.memory);
-        println!("│MEMFREE:          {}  {}  {}%", conv_b(self.free_memory), self.free_memory, conv_p(self.memory, self.free_memory));
-        println!("│SWAP:              {}   {}", conv_b(self.swap), self.swap);
-        println!("│SWAPFREE:          {}   {}  {}%", conv_b(self.free_swap), self.free_swap, conv_p(self.swap, self.free_swap));
-        println!("├──────────────────────────────────");
-        println!("│NETWORK DEVICES:");
-        for interface in &self.network_dev {
-            println!("│   ├─{}──────────────────────────────────", interface.name);
-            println!("│   │     DOWN:     {}      {}", conv_b(interface.received_bytes), interface.received_bytes);
-            println!("│   │     UP:       {}      {}", conv_b(interface.transfered_bytes), interface.transfered_bytes);
-        }
-        println!("├──────────────────────────────────");
-        println!("│STORAGE DEVICES:");
-        for storage in &self.storage_dev {
-            println!("│   ├─{}─────────────────────────────────────", storage.name);
-            println!("│   │     MAJ:MIN:     {}:{}", storage.major, storage.minor);
-            println!("│   │     SIZE:        {}    {}", conv_b(storage.size), storage.size);
-            println!("│   │     PARTITIONS: ");
-            let partitions = self.partitions.get(&String::from(&storage.name)).expect("Well");
-            for partition in partitions{
-                println!("│   │         ├─{}──────────────────────────────────", partition.name);
-                println!("│   │         │     MAJ:MIN:      {}:{}", partition.major, partition.minor);
-                println!("│   │         │     SIZE:         {}      {}", conv_b(partition.size), partition.size);
-                println!("│   │         │     FILESYSTEM:   {}", partition.filesystem);
-                println!("│   │         │     MOUNTPOINT:   {}", partition.mountpoint);
-            }
-        }
-    }
-
     fn get_hostname() -> String{
         match fs::read_to_string("/proc/sys/kernel/hostname") {
             Ok(hostname) => String::from(hostname.trim_end()),
@@ -138,10 +108,15 @@ impl Pc {
         }
     }
 
-    fn get_memory_total() -> u64{
+    fn get_mem(target: Memory) -> u64 {
         match fs::read_to_string("/proc/meminfo") {
             Ok(res) => {
-                let re = Regex::new(r"MemTotal:\s*(\d*)").unwrap();
+                let re = match target {
+                    Memory::SwapFree => Regex::new(r"SwapFree:\s*(\d*)").unwrap(),
+                    Memory::SwapTotal => Regex::new(r"SwapTotal:\s*(\d*)").unwrap(),
+                    Memory::MemoryTotal => Regex::new(r"MemTotal:\s*(\d*)").unwrap(),
+                    Memory::MemoryFree => Regex::new(r"MemFree:\s*(\d*)").unwrap()
+                };
                 let data = re.captures(&res).unwrap();
                 match data[1].parse::<u64>() {
                     Ok(n) => n*1024,
@@ -153,58 +128,7 @@ impl Pc {
             },
             _ => 0
         }
-    }
-
-    fn get_memory_free() -> u64 {
-        match fs::read_to_string("/proc/meminfo") {
-            Ok(res) => {
-                let re = Regex::new(r"MemFree:\s*(\d*)").unwrap();
-                let data = re.captures(&res).unwrap();
-                match data[1].parse::<u64>() {
-                    Ok(n) => n*1024,
-                    Err(e) => {
-                        println!("{}", e);
-                        0
-                    }
-                }
-            },
-            _ => 0
-        }
-    }
-
-    fn get_swap_total() -> u64 {
-        match fs::read_to_string("/proc/meminfo") {
-            Ok(res) => {
-                let re = Regex::new(r"SwapTotal:\s*(\d*)").unwrap();
-                let data = re.captures(&res).unwrap();
-                match data[1].parse::<u64>() {
-                    Ok(n) => n*1024,
-                    Err(e) => {
-                        println!("{}", e);
-                        0
-                    }
-                }
-            },
-            _ => 0
-        }
-    }
-
-    fn get_swap_free() -> u64 {
-        match fs::read_to_string("/proc/meminfo") {
-            Ok(res) => {
-                let re = Regex::new(r"SwapFree:\s*(\d*)").unwrap();
-                let data = re.captures(&res).unwrap();
-                match data[1].parse::<u64>() {
-                    Ok(n) => n*1024,
-                    Err(e) => {
-                        println!("{}", e);
-                        0
-                    }
-                }
-            },
-            _ => 0
-        }
-    }
+    } 
 
     fn get_cpu_info() -> String {
         match fs::read_to_string("/proc/cpuinfo") {
@@ -333,7 +257,7 @@ impl Pc {
                                 _ => 0
                             };
                             let partition_name = &storage_dev[4];
-
+                            
                             match fs::read_to_string("/proc/mounts") {
                                 Ok(data) => {
                                     let rere = Regex::new(r"/dev/(\w*)\s(\S*)\s(\S*)").unwrap();
@@ -349,7 +273,6 @@ impl Pc {
                                             partition.mountpoint = String::from("");
                                             partition.filesystem = String::from("");
                                         }
-                                        
                                     }
                                     partition.name = String::from(partition_name);
                                     partition.major = major;
@@ -363,13 +286,10 @@ impl Pc {
                                     partition.filesystem = String::from("");
                                 }
                             }
-
-                            
                         }
                     }
                     devices.insert(String::from(dev_name), partitions);
                 }
-                
                 devices
             },
             Err(e) => {
@@ -378,8 +298,41 @@ impl Pc {
             }
         }
     }
-
-    
+}
+fn display_info(pc: Pc) {
+    println!("────────────────────────────────────");
+    println!("│HOSTNAME:         {}", pc.hostname);
+    println!("│KERNEL VERSION:   {}", pc.kernel_version);
+    println!("│UPTIME:           {}", conv_t(pc.uptime));
+    println!("│CPU:              {}", pc.cpu);
+    println!("│CPU CLOCK:        {:.2} MHz", pc.cpu_clock);
+    println!("│MEM:              {}  {}", conv_b(pc.memory), pc.memory);
+    println!("│MEMFREE:          {}  {}  {}%", conv_b(pc.free_memory), pc.free_memory, conv_p(pc.memory, pc.free_memory));
+    println!("│SWAP:              {}   {}", conv_b(pc.swap), pc.swap);
+    println!("│SWAPFREE:          {}   {}  {}%", conv_b(pc.free_swap), pc.free_swap, conv_p(pc.swap, pc.free_swap));
+    println!("├──────────────────────────────────");
+    println!("│NETWORK DEVICES:");
+    for interface in &pc.network_dev {
+        println!("│   ├─{}──────────────────────────────────", interface.name);
+        println!("│   │     DOWN:     {}      {}", conv_b(interface.received_bytes), interface.received_bytes);
+        println!("│   │     UP:       {}      {}", conv_b(interface.transfered_bytes), interface.transfered_bytes);
+    }
+    println!("├──────────────────────────────────");
+    println!("│STORAGE DEVICES:");
+    for storage in &pc.storage_dev {
+        println!("│   ├─{}─────────────────────────────────────", storage.name);
+        println!("│   │     MAJ:MIN:     {}:{}", storage.major, storage.minor);
+        println!("│   │     SIZE:        {}    {}", conv_b(storage.size), storage.size);
+        println!("│   │     PARTITIONS: ");
+        let partitions = pc.partitions.get(&String::from(&storage.name)).expect("Well");
+        for partition in partitions{
+            println!("│   │         ├─{}──────────────────────────────────", partition.name);
+            println!("│   │         │     MAJ:MIN:      {}:{}", partition.major, partition.minor);
+            println!("│   │         │     SIZE:         {}      {}", conv_b(partition.size), partition.size);
+            println!("│   │         │     FILESYSTEM:   {}", partition.filesystem);
+            println!("│   │         │     MOUNTPOINT:   {}", partition.mountpoint);
+        }
+    }
 }
 
 fn conv_p(total: u64, free: u64) -> u64 {
@@ -434,23 +387,23 @@ fn conv_t(sec: f64) -> String {
 }
 
 fn main() {
-    // loop {
-        // print!("{}[2J", 27 as char);
+// loop {
+    // print!("{}[2J", 27 as char);
     let p = Pc {
         hostname: Pc::get_hostname(),
         kernel_version: Pc::get_kernelv(),
         uptime: Pc::get_uptime(),
         cpu: Pc::get_cpu_info(),
         cpu_clock: Pc::get_cpu_clock(),
-        memory: Pc::get_memory_total(),
-        free_memory: Pc::get_memory_free(),
-        swap: Pc::get_swap_total(),
-        free_swap: Pc::get_swap_free(),
+        memory: Pc::get_mem(Memory::MemoryTotal),
+        free_memory: Pc::get_mem(Memory::MemoryFree),
+        swap: Pc::get_mem(Memory::SwapTotal),
+        free_swap: Pc::get_mem(Memory::SwapFree),
         network_dev: Pc::get_network_dev(),
         storage_dev: Pc::get_storage_dev(),
         partitions: Pc::get_storage_partitions(Pc::get_storage_dev())
     };
-    p.display_info();
-        // thread::sleep(time::Duration::from_secs(1));
-    // }
+    display_info(p);
+    // thread::sleep(time::Duration::from_secs(1));
+// }
 }
