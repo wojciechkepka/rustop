@@ -13,7 +13,9 @@ struct Pc {
     free_memory: u64,
     swap: u64,
     free_swap: u64,
-    network_dev: Vec<HashMap<String, String>>
+    network_dev: Vec<HashMap<String, String>>,
+    storage_dev: Vec<HashMap<String, String>>,
+    partitions: HashMap<String, Vec<HashMap<String, String>>>
 }
 
 impl Pc {
@@ -62,9 +64,124 @@ impl Pc {
                     0
                 }
             };
-            println!("  ├─{}─────────────────────────", interface_name);
-            println!("  │     DOWN:     {}      {}", conv_b(received), received);
-            println!("  │     UP:       {}      {}", conv_b(transfered), transfered);
+            println!("│   ├─{}─────────────────────────", interface_name);
+            println!("│   │     DOWN:     {}      {}", conv_b(received), received);
+            println!("│   │     UP:       {}      {}", conv_b(transfered), transfered);
+        }
+        println!("│STORAGE DEVICES:");
+        for storage in &self.storage_dev {
+            let storage_name = match storage.get(&String::from("name")) {
+                Some(n) => n,
+                _ => ""
+            };
+            let major = match storage.get(&String::from("major")) {
+                Some(n) => {
+                    match n.parse::<u8>() {
+                        Ok(m) => m,
+                        Err(e) => {
+                            println!("{}", e);
+                            0
+                        }
+                    }
+                }
+                _ => {
+                    0
+                }
+            };
+            let minor = match storage.get(&String::from("minor")) {
+                Some(n) => {
+                    match n.parse::<u8>() {
+                        Ok(m) => m,
+                        Err(e) => {
+                            println!("{}", e);
+                            0
+                        }
+                    }
+                }
+                _ => {
+                    0
+                }
+            };
+            let blocks = match storage.get(&String::from("blocks")) {
+                Some(n) => {
+                    match n.parse::<u64>() {
+                        Ok(m) => m,
+                        Err(e) => {
+                            println!("{}", e);
+                            0
+                        }
+                    }
+                }
+                _ => {
+                    0
+                }
+            };
+            println!("│   ├─{}─────────────────────────", storage_name);
+            println!("│   │     MAJ:MIN:     {}:{}", major, minor);
+            println!("│   │     SIZE:        {}    {}", conv_b(blocks*1024), blocks*1024);
+            println!("│   │     PARTITIONS: ");
+            let partitions = self.partitions.get(&String::from(storage_name)).expect("Well");
+            for partition in partitions{
+                let partition_name = match partition.get(&String::from("name")) {
+                    Some(n) => n,
+                    _ => ""
+                };
+                let major = match partition.get(&String::from("major")) {
+                    Some(n) => {
+                        match n.parse::<u8>() {
+                            Ok(m) => m,
+                            Err(e) => {
+                                println!("{}", e);
+                                0
+                            }
+                        }
+                    }
+                    _ => {
+                        0
+                    }
+                };
+                let minor = match partition.get(&String::from("minor")) {
+                    Some(n) => {
+                        match n.parse::<u8>() {
+                            Ok(m) => m,
+                            Err(e) => {
+                                println!("{}", e);
+                                0
+                            }
+                        }
+                    }
+                    _ => {
+                        0
+                    }
+                };
+                let blocks = match partition.get(&String::from("blocks")) {
+                    Some(n) => {
+                        match n.parse::<u64>() {
+                            Ok(m) => m,
+                            Err(e) => {
+                                println!("{}", e);
+                                0
+                            }
+                        }
+                    }
+                    _ => {
+                        0
+                    }
+                };
+                let filesystem = match partition.get(&String::from("filesystem")) {
+                    Some(n) => n,
+                    _ => ""
+                };
+                let mount_point = match partition.get(&String::from("mountpoint")) {
+                    Some(n) => n,
+                    _ => ""
+                };
+                println!("│   │         ├─{}─────────────────────────", partition_name);
+                println!("│   │         │     MAJ:MIN:      {}:{}", major, minor);
+                println!("│   │         │     SIZE:         {}      {}", conv_b(blocks*1024), blocks*1024);
+                println!("│   │         │     FILESYSTEM:   {}", filesystem);
+                println!("│   │         │     MOUNTPOINT:   {}", mount_point);
+            }
         }
     }
 
@@ -225,7 +342,98 @@ impl Pc {
                 devices
             }
         }
-    }    
+    }
+
+    fn get_storage_dev() -> Vec<HashMap<String, String>> {
+        let mut devices = Vec::new();
+        match fs::read_to_string("/proc/partitions") {
+            Ok(res) => {
+                let re = Regex::new(r"(?m)^\s*(\d*)\s*(\d*)\s*(\d*)\s(\D*)$").unwrap();
+                for storage_dev in re.captures_iter(&res) {
+                    let mut storage = HashMap::new();
+                    let major = &storage_dev[1];
+                    let minor = &storage_dev[2];
+                    let blocks = &storage_dev[3];
+                    let storage_name = &storage_dev[4];
+
+                    storage.insert(String::from("name"), String::from(storage_name));
+                    storage.insert(String::from("major"), String::from(major));
+                    storage.insert(String::from("minor"), String::from(minor));
+                    storage.insert(String::from("blocks"), String::from(blocks));
+                    devices.push(storage);
+                }
+                devices
+            },
+            Err(e) => {
+                println!("Error - {}", e);
+                devices
+            }
+        }
+    }
+
+    fn get_storage_partitions(storage_dev: Vec<HashMap<String, String>>) -> HashMap<String, Vec<HashMap<String, String>>> {
+        let mut devices = HashMap::new();
+        match fs::read_to_string("/proc/partitions") {
+            Ok(res) => {
+                for dev in &storage_dev{
+                    let dev_name = match dev.get(&String::from("name")) {
+                        Some(n) => String::from(n),
+                        _ => String::from("")
+                    };
+                    let mut partitions = Vec::new();
+                    let re = Regex::new(r"(?m)^\s*(\d*)\s*(\d*)\s*(\d*)\s(\w*\d+)$").unwrap();
+                    for storage_dev in re.captures_iter(&res) {
+                        if &storage_dev[4][..3] == &dev_name {
+                            let mut partition = HashMap::new();
+                            let major = &storage_dev[1];
+                            let minor = &storage_dev[2];
+                            let blocks = &storage_dev[3];
+                            let partition_name = &storage_dev[4];
+
+                            match fs::read_to_string("/proc/mounts") {
+                                Ok(data) => {
+                                    let rere = Regex::new(r"/dev/(\w*)\s(\S*)\s(\S*)").unwrap();
+                                    for found_partition in rere.captures_iter(&data) {
+                                        if &found_partition[1] == partition_name {
+                                            let mountpoint = &found_partition[2];
+                                            let filesystem = &found_partition[3];
+                                            partition.insert(String::from("mountpoint"), String::from(mountpoint));
+                                            partition.insert(String::from("filesystem"), String::from(filesystem));
+                                            break;
+                                        }
+                                        else {
+                                            partition.insert(String::from("mountpoint"), String::from(""));
+                                            partition.insert(String::from("filesystem"), String::from(""));
+                                        }
+                                        
+                                    }
+                                    partition.insert(String::from("name"), String::from(partition_name));
+                                    partition.insert(String::from("major"), String::from(major));
+                                    partition.insert(String::from("minor"), String::from(minor));
+                                    partition.insert(String::from("blocks"), String::from(blocks));
+                                    partitions.push(partition.clone());
+                                }
+                                Err(e) => {
+                                    println!("{}", e);
+                                    partition.insert(String::from("mountpoint"), String::from(""));
+                                    partition.insert(String::from("filesystem"), String::from(""));
+                                }
+                            }
+
+                            
+                        }
+                    }
+                    devices.insert(String::from(dev_name), partitions);
+                }
+                
+                devices
+            },
+            Err(e) => {
+                println!("Error - {}", e);
+                devices
+            }
+        }
+    }
 }
 
 fn conv_p(total: u64, free: u64) -> u64 {
@@ -281,7 +489,7 @@ fn conv_t(sec: f64) -> String {
 
 fn main() {
     loop {
-        print!("{}[2J", 27 as char);
+        // print!("{}[2J", 27 as char);
         let p = Pc {
             hostname: Pc::get_hostname(),
             kernel_version: Pc::get_kernelv(),
@@ -292,8 +500,9 @@ fn main() {
             free_memory: Pc::get_memory_free(),
             swap: Pc::get_swap_total(),
             free_swap: Pc::get_swap_free(),
-            network_dev: Pc::get_network_dev()
-
+            network_dev: Pc::get_network_dev(),
+            storage_dev: Pc::get_storage_dev(),
+            partitions: Pc::get_storage_partitions(Pc::get_storage_dev())
         };
         p.display_info();
         thread::sleep(time::Duration::from_secs(1));
