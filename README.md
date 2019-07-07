@@ -6,6 +6,7 @@ All important information about your system in one place.
 - run  `sudo ./INSTALL`
 - or compile from source with `cargo build --release`
 ## Running
+- run `rustop` if you installed with `INSTALL`
 - run `./rustop` in the same directory as the binary file
 ## Example output
     ────────────────────────────────────
