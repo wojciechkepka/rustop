@@ -359,7 +359,10 @@ fn display_info(pc: PcInfo) {
 }
 
 fn conv_p(total: u64, free: u64) -> u64 {
-    free * 100 / total
+    match total {
+        0 => 0,
+        _ => free * 100 / total
+    }
 }
 
 fn conv_b(bytes: u64) -> String {
