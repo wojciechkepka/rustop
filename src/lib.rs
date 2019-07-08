@@ -22,7 +22,7 @@ impl NetworkDevice {
 }
 
 #[derive(Debug)]
-struct Storage { name: String, major: u8, minor: u8, size: u64 }
+struct Storage { name: String, major: u8, minor: u8, size: u64, partitions: Vec<Partition> }
 impl Storage {
     fn new() -> Storage {
         Storage {
@@ -30,6 +30,7 @@ impl Storage {
             major: 0,
             minor: 0,
             size: 0,
+            partitions: Vec::new()
         }
     }
 }
@@ -70,7 +71,6 @@ pub struct PcInfo {
     free_swap: u64,
     network_dev: Vec<NetworkDevice>,
     storage_dev: Vec<Storage>,
-    partitions: HashMap<String, Vec<Partition>>
 }
 impl PcInfo {
     pub fn new() -> PcInfo {
@@ -87,7 +87,6 @@ impl PcInfo {
             free_swap: Get::mem(Memory::SwapFree),
             network_dev: Get::network_dev(),
             storage_dev: Get::storage_dev(),
-            partitions: Get::storage_partitions(Get::storage_dev())
         }
     }
 }
@@ -243,6 +242,7 @@ impl Get {
                     storage.major = major;
                     storage.minor = minor;
                     storage.size = blocks*1024;
+                    storage.partitions = Get::storage_partitions(&storage.name);
                     devices.push(storage);
                 }
                 devices
@@ -254,70 +254,65 @@ impl Get {
         }
     }
 
-    fn storage_partitions(storage_dev: Vec<Storage>) -> HashMap<String, Vec<Partition>> {
-        let mut devices = HashMap::new();
+    fn storage_partitions(stor_name: &str) -> Vec<Partition> {
         match fs::read_to_string(Get::path(SysProperty::StorDev)) {
             Ok(res) => {
-                for dev in &storage_dev{
-                    let dev_name = &dev.name;
-                    let mut partitions = Vec::new();
-                    let re = Regex::new(r"(?m)^\s*(\d*)\s*(\d*)\s*(\d*)\s(\w*\d+)$").unwrap();
-                    for storage_dev in re.captures_iter(&res) {
-                        if &storage_dev[4][..3] == dev_name {
-                            let mut partition = Partition::new();
-                            let major = match storage_dev[1].parse::<u8>() {
-                                Ok(n) => n,
-                                _ => 0
-                            };
-                            let minor = match storage_dev[2].parse::<u8>() {
-                                Ok(n) => n,
-                                _ => 0
-                            };
-                            let blocks = match storage_dev[3].parse::<u64>() {
-                                Ok(n) => n,
-                                _ => 0
-                            };
-                            let partition_name = &storage_dev[4];
-                            
-                            match fs::read_to_string(Get::path(SysProperty::StorMounts)) {
-                                Ok(data) => {
-                                    let rere = Regex::new(r"/dev/(\w*)\s(\S*)\s(\S*)").unwrap();
-                                    for found_partition in rere.captures_iter(&data) {
-                                        if &found_partition[1] == partition_name {
-                                            let mountpoint = &found_partition[2];
-                                            let filesystem = &found_partition[3];
-                                            partition.mountpoint = String::from(mountpoint);
-                                            partition.filesystem = String::from(filesystem);
-                                            break;
-                                        }
-                                        else {
-                                            partition.mountpoint = String::from("");
-                                            partition.filesystem = String::from("");
-                                        }
+                let mut partitions = Vec::new();
+                let re = Regex::new(r"(?m)^\s*(\d*)\s*(\d*)\s*(\d*)\s(\w*\d+)$").unwrap();
+                for storage_dev in re.captures_iter(&res) {
+                    if &storage_dev[4][..3] == stor_name {
+                        let mut partition = Partition::new();
+                        let major = match storage_dev[1].parse::<u8>() {
+                            Ok(n) => n,
+                            _ => 0
+                        };
+                        let minor = match storage_dev[2].parse::<u8>() {
+                            Ok(n) => n,
+                            _ => 0
+                        };
+                        let blocks = match storage_dev[3].parse::<u64>() {
+                            Ok(n) => n,
+                            _ => 0
+                        };
+                        let partition_name = &storage_dev[4];
+                        
+                        match fs::read_to_string(Get::path(SysProperty::StorMounts)) {
+                            Ok(data) => {
+                                let rere = Regex::new(r"/dev/(\w*)\s(\S*)\s(\S*)").unwrap();
+                                for found_partition in rere.captures_iter(&data) {
+                                    if &found_partition[1] == partition_name {
+                                        let mountpoint = &found_partition[2];
+                                        let filesystem = &found_partition[3];
+                                        partition.mountpoint = String::from(mountpoint);
+                                        partition.filesystem = String::from(filesystem);
+                                        break;
                                     }
-                                    partition.name = String::from(partition_name);
-                                    partition.major = major;
-                                    partition.minor = minor;
-                                    partition.size = blocks*1024;
-                                    partitions.push(partition);
+                                    else {
+                                        partition.mountpoint = String::from("");
+                                        partition.filesystem = String::from("");
+                                    }
                                 }
-                                Err(e) => {
-                                    println!("{}", e);
-                                    partition.mountpoint = String::from("");
-                                    partition.filesystem = String::from("");
-                                }
+                                partition.name = String::from(partition_name);
+                                partition.major = major;
+                                partition.minor = minor;
+                                partition.size = blocks*1024;
+                                partitions.push(partition);
+                            }
+                            Err(e) => {
+                                println!("{}", e);
+                                partition.mountpoint = String::from("");
+                                partition.filesystem = String::from("");
                             }
                         }
                     }
-                    devices.insert(String::from(dev_name), partitions);
                 }
-                devices
-            },
+                partitions
+            }
             Err(e) => {
                 println!("Error - {}", e);
-                devices
+                Vec::new()
             }
-        }
+        }   
     }
 }
 
@@ -330,12 +325,6 @@ impl fmt::Display for PcInfo {
         let mut storage = String::new();
         for store in &self.storage_dev {
             storage.push_str(&store.to_string());
-        }
-        let mut partitions = String::new();
-        for parts in self.partitions.values() {
-            for p in parts {
-                partitions.push_str(&p.to_string());
-            }
         }
         write!(f, 
 "┌──────────────────────────────────
@@ -350,7 +339,6 @@ impl fmt::Display for PcInfo {
 │ SWAPFREE:             {}   {}  {}%
 │ NETWORK DEVICE: {}
 │ STORAGE: {}
-│ PARTITIONS: {}
 "
         , self.hostname, self.kernel_version, utils::conv_t(self.uptime), self.cpu,
         self.cpu_clock,
@@ -358,7 +346,7 @@ impl fmt::Display for PcInfo {
         utils::conv_b(self.free_memory), self.free_memory, utils::conv_p(self.memory, self.free_memory),
         utils::conv_b(self.swap), self.swap, 
         utils::conv_b(self.free_swap), self.free_swap, utils::conv_p(self.swap, self.free_swap),
-        networks, storage, partitions )
+        networks, storage)
     }
 }
 impl fmt::Display for NetworkDevice {
@@ -376,13 +364,20 @@ impl fmt::Display for NetworkDevice {
 
 impl fmt::Display for Storage {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f,"        
+        let mut partitions = String::new();
+        for p in &self.partitions {
+                partitions.push_str(&p.to_string());
+        }
+        write!(f,"
+│ STORAGE:
 │   ├─{}──────────────────────────────────
 │   │     MAJ:MIN:     {}:{}
-│   │     SIZE:        {}    {}",
+│   │     SIZE:        {}    {}
+│   │     PARTITIONS: {}",
         self.name,
         self.major, self.minor,
-        utils::conv_b(self.size), self.size
+        utils::conv_b(self.size), self.size,
+        partitions
         )
     }
 }
