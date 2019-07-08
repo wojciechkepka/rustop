@@ -1,10 +1,11 @@
 mod utils;
 use std::collections::HashMap;
 use std::fs;
+use std::path::Path;
 use regex::Regex;
 
 #[derive(Debug)] 
-enum OsProperty { Hostname, OsRelease, Uptime }
+enum SysProperty {CpuInfo, Hostname, OsRelease, Uptime, Mem, NetDev, StorDev, StorMounts }
 
 #[derive(Debug)]
 struct Partition {
@@ -73,9 +74,9 @@ pub struct PcInfo {
 impl PcInfo {
     pub fn new() -> PcInfo {
         PcInfo {
-            hostname: Get::osproperty(OsProperty::Hostname),
-            kernel_version: Get::osproperty(OsProperty::OsRelease),
-            uptime: Get::osproperty(OsProperty::Uptime),
+            hostname: Get::sysproperty(SysProperty::Hostname),
+            kernel_version: Get::sysproperty(SysProperty::OsRelease),
+            uptime: Get::sysproperty(SysProperty::Uptime),
             cpu: Get::cpu_info(),
             cpu_clock: Get::cpu_clock(),
             memory: Get::mem(Memory::MemoryTotal),
@@ -92,18 +93,30 @@ impl PcInfo {
 #[derive(Debug)]
 struct Get;
 impl Get {
-    fn osproperty(property: OsProperty) -> String {
-        let mut path = String::from("/proc/");
-        path.push_str( match property {
-            OsProperty::OsRelease => "sys/kernel/osrelease",
-            OsProperty::Hostname => "sys/kernel/hostname",
-            OsProperty::Uptime => "uptime"
-        });
+    fn path(prop: SysProperty) -> &'static Path {
+        match prop {
+            SysProperty::Hostname => &Path::new("/proc/sys/kernel/hostname"),
+            SysProperty::OsRelease => &Path::new("/proc/sys/kernel/osrelease"),
+            SysProperty::Uptime => &Path::new("/proc/uptime"),
+            SysProperty::Mem => &Path::new("/proc/meminfo"),
+            SysProperty::NetDev => &Path::new("/proc/net/dev"),
+            SysProperty::StorDev => &Path::new("/proc/partitions"),
+            SysProperty::StorMounts => &Path::new("/proc/mounts"),
+            SysProperty::CpuInfo => &Path::new("/proc/cpuinfo")
+        }
+    }
+    fn sysproperty(property: SysProperty) -> String {
+        let path = match property {
+            SysProperty::OsRelease => Get::path(SysProperty::OsRelease),
+            SysProperty::Hostname => Get::path(SysProperty::Hostname),
+            SysProperty::Uptime => Get::path(SysProperty::Uptime),
+            _ => &Path::new("")
+        };
         String::from(fs::read_to_string(path).unwrap().trim_end())
     }
 
     fn cpu_info() -> String {
-        match fs::read_to_string("/proc/cpuinfo") {
+        match fs::read_to_string(Get::path(SysProperty::CpuInfo)) {
             Ok(res) => {
                 let re = Regex::new(r"model name\s*: (.*)").unwrap();
                 let data = re.captures(&res).unwrap();
@@ -117,7 +130,7 @@ impl Get {
     }
 
     fn mem(target: Memory) -> u64 {
-        match fs::read_to_string("/proc/meminfo") {
+        match fs::read_to_string(Get::path(SysProperty::Mem)) {
             Ok(res) => {
                 let re = match target {
                     Memory::SwapFree => Regex::new(r"SwapFree:\s*(\d*)").unwrap(),
@@ -139,7 +152,7 @@ impl Get {
     } 
 
     fn cpu_clock() -> f32 {
-        match fs::read_to_string("/proc/cpuinfo") {
+        match fs::read_to_string(Get::path(SysProperty::CpuInfo)) {
             Ok(res) => {
                 let re = Regex::new(r"cpu MHz\s*: (.*)").unwrap();
                 let mut clock_speed = 0.;
@@ -164,7 +177,7 @@ impl Get {
 
     fn network_dev() -> Vec<NetworkDevice> {
         let mut devices = Vec::new();
-        match fs::read_to_string("/proc/net/dev") {
+        match fs::read_to_string(Get::path(SysProperty::NetDev)) {
             Ok(res) => {
                 let re = Regex::new(r"([\d\w]*):\s*(\d*)\s*\d*\s*\d*\s*\d*\s*\d*\s*\d*\s*\d*\s*\d*\s*(\d*)").unwrap();
                 for network_dev in re.captures_iter(&res) {
@@ -193,7 +206,7 @@ impl Get {
 
     fn storage_dev() -> Vec<Storage> {
         let mut devices = Vec::new();
-        match fs::read_to_string("/proc/partitions") {
+        match fs::read_to_string(Get::path(SysProperty::StorDev)) {
             Ok(res) => {
                 let re = Regex::new(r"(?m)^\s*(\d*)\s*(\d*)\s*(\d*)\s(\D*)$").unwrap();
                 for storage_dev in re.captures_iter(&res) {
@@ -228,7 +241,7 @@ impl Get {
 
     fn storage_partitions(storage_dev: Vec<Storage>) -> HashMap<String, Vec<Partition>> {
         let mut devices = HashMap::new();
-        match fs::read_to_string("/proc/partitions") {
+        match fs::read_to_string(Get::path(SysProperty::StorDev)) {
             Ok(res) => {
                 for dev in &storage_dev{
                     let dev_name = &dev.name;
@@ -251,7 +264,7 @@ impl Get {
                             };
                             let partition_name = &storage_dev[4];
                             
-                            match fs::read_to_string("/proc/mounts") {
+                            match fs::read_to_string(Get::path(SysProperty::StorMounts)) {
                                 Ok(data) => {
                                     let rere = Regex::new(r"/dev/(\w*)\s(\S*)\s(\S*)").unwrap();
                                     for found_partition in rere.captures_iter(&data) {
