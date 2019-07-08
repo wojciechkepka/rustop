@@ -2,6 +2,9 @@ use std::collections::HashMap;
 use std::fs;
 use regex::Regex;
 
+#[derive(Debug)] 
+enum OsProperty { CpuInfo, Hostname, OsRelease, Uptime }
+
 #[derive(Debug)]
 struct Partition {
     name: String,
@@ -25,11 +28,7 @@ impl Partition {
 }
 
 #[derive(Debug)]
-struct NetworkDevice {
-    name: String,
-    received_bytes: u64,
-    transfered_bytes: u64,
-}
+struct NetworkDevice { name: String, received_bytes: u64, transfered_bytes: u64 }
 impl NetworkDevice {
     fn new() -> NetworkDevice {
         NetworkDevice {
@@ -41,12 +40,7 @@ impl NetworkDevice {
 }
 
 #[derive(Debug)]
-struct Storage {
-    name: String,
-    major: u8,
-    minor: u8,
-    size: u64,
-}
+struct Storage { name: String, major: u8, minor: u8, size: u64 }
 impl Storage {
     fn new() -> Storage {
         Storage {
@@ -58,18 +52,13 @@ impl Storage {
     }
 }
 
-enum Memory {
-    SwapTotal,
-    SwapFree,
-    MemoryTotal,
-    MemoryFree
-}
+enum Memory { SwapTotal, SwapFree, MemoryTotal, MemoryFree }
 
 #[derive(Debug)]
 struct PcInfo {
     hostname: String,
     kernel_version: String,
-    uptime: f64,
+    uptime: String,
     cpu: String,
     cpu_clock: f32,
     memory: u64,
@@ -83,10 +72,10 @@ struct PcInfo {
 impl PcInfo {
     fn new() -> PcInfo {
         PcInfo {
-            hostname: Get::hostname(),
-            kernel_version: Get::kernelv(),
-            uptime: Get::uptime(),
-            cpu: Get::cpu_info(),
+            hostname: Get::osproperty(OsProperty::Hostname),
+            kernel_version: Get::osproperty(OsProperty::OsRelease),
+            uptime: Get::osproperty(OsProperty::Uptime),
+            cpu: Get::osproperty(OsProperty::CpuInfo),
             cpu_clock: Get::cpu_clock(),
             memory: Get::mem(Memory::MemoryTotal),
             free_memory: Get::mem(Memory::MemoryFree),
@@ -102,31 +91,15 @@ impl PcInfo {
 #[derive(Debug)]
 struct Get;
 impl Get {
-    fn hostname() -> String{
-        match fs::read_to_string("/proc/sys/kernel/hostname") {
-            Ok(hostname) => String::from(hostname.trim_end()),
-            _ => String::from("null")
-        }
-    }
-
-    fn kernelv() -> String{
-        match fs::read_to_string("/proc/sys/kernel/osrelease") {
-            Ok(kern_v) => String::from(kern_v.trim_end()),
-            _ => String::from("null")
-        }
-    }
-
-    fn uptime() -> f64{
-        match fs::read_to_string("/proc/uptime") {
-            Ok(res) => {
-                let data: Vec<&str> = res.split(' ').collect();
-                match data[0].parse::<f64>() {
-                    Ok(n) => n,
-                    _ => 0.
-                }
-            },
-            _ => 0.
-        }
+    fn osproperty(property: OsProperty) -> String {
+        let mut path = String::from("/proc/");
+        path.push_str( match property {
+            OsProperty::OsRelease => "sys/kernel/osrelease",
+            OsProperty::Hostname => "sys/kernel/hostname",
+            OsProperty::CpuInfo => "cpuinfo",
+            OsProperty::Uptime => "uptime"
+        });
+        fs::read_to_string(path).unwrap()
     }
 
     fn mem(target: Memory) -> u64 {
@@ -150,20 +123,6 @@ impl Get {
             _ => 0
         }
     } 
-
-    fn cpu_info() -> String {
-        match fs::read_to_string("/proc/cpuinfo") {
-            Ok(res) => {
-                let re = Regex::new(r"model name\s*: (.*)").unwrap();
-                let data = re.captures(&res).unwrap();
-                String::from(&data[1])
-            },
-            Err(e) => {
-                println!("Error - {}", e);
-                String::from("")
-            }
-        }
-    }
 
     fn cpu_clock() -> f32 {
         match fs::read_to_string("/proc/cpuinfo") {
@@ -324,7 +283,7 @@ fn display_info(pc: PcInfo) {
     println!("====================================");
     println!("│HOSTNAME:         {}", pc.hostname);
     println!("│KERNEL VERSION:   {}", pc.kernel_version);
-    println!("│UPTIME:           {}", conv_t(pc.uptime));
+    println!("│UPTIME:           {}", pc.uptime);
     println!("│CPU:              {}", pc.cpu);
     println!("│CPU CLOCK:        {:.2} MHz", pc.cpu_clock);
     println!("│MEM:              {}  {}", conv_b(pc.memory), pc.memory);
