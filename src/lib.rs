@@ -1,34 +1,13 @@
 mod utils;
 use std::collections::HashMap;
 use std::fs;
+use std::fmt;
 use std::path::Path;
 use regex::Regex;
 
-#[derive(Debug)] 
 
 enum SysProperty {CpuInfo, Hostname, OsRelease, Uptime, Mem, NetDev, StorDev, StorMounts }
-
-#[derive(Debug)]
-struct Partition {
-    name: String,
-    major: u8,
-    minor: u8,
-    size: u64,
-    filesystem: String,
-    mountpoint: String
-}
-impl Partition {
-    fn new() -> Partition {
-        Partition {
-            name: String::from(""),
-            major: 0,
-            minor: 0,
-            size: 0,
-            filesystem: String::from(""),
-            mountpoint: String::from("")
-        }
-    }
-}
+enum Memory { SwapTotal, SwapFree, MemoryTotal, MemoryFree }
 
 #[derive(Debug)]
 struct NetworkDevice { name: String, received_bytes: u64, transfered_bytes: u64 }
@@ -55,7 +34,28 @@ impl Storage {
     }
 }
 
-enum Memory { SwapTotal, SwapFree, MemoryTotal, MemoryFree }
+#[derive(Debug)]
+struct Partition {
+    name: String,
+    major: u8,
+    minor: u8,
+    size: u64,
+    filesystem: String,
+    mountpoint: String
+}
+
+impl Partition {
+    fn new() -> Partition {
+        Partition {
+            name: String::from(""),
+            major: 0,
+            minor: 0,
+            size: 0,
+            filesystem: String::from(""),
+            mountpoint: String::from("")
+        }
+    }
+}
 
 #[derive(Debug)]
 pub struct PcInfo {
@@ -321,38 +321,84 @@ impl Get {
     }
 }
 
-pub fn display_info(pc: PcInfo) {
-    println!("───────────────────────────────────");
-    println!("│HOSTNAME:         {}", pc.hostname);
-    println!("│KERNEL VERSION:   {}", pc.kernel_version);
-    println!("│UPTIME:           {}", utils::conv_t(pc.uptime));
-    println!("│CPU:              {}", pc.cpu);
-    println!("│CPU CLOCK:        {:.2} MHz", pc.cpu_clock);
-    println!("│MEM:              {}  {}", utils::conv_b(pc.memory), pc.memory);
-    println!("│MEMFREE:          {}  {}  {}%", utils::conv_b(pc.free_memory), pc.free_memory, utils::conv_p(pc.memory, pc.free_memory));
-    println!("│SWAP:              {}   {}", utils::conv_b(pc.swap), pc.swap);
-    println!("│SWAPFREE:          {}   {}  {}%", utils::conv_b(pc.free_swap), pc.free_swap, utils::conv_p(pc.swap, pc.free_swap));
-    println!("├──────────────────────────────────");
-    println!("│NETWORK DEVICES:");
-    for interface in &pc.network_dev {
-        println!("│   ├─{}──────────────────────────────────", interface.name);
-        println!("│   │     DOWN:     {}      {}", utils::conv_b(interface.received_bytes), interface.received_bytes);
-        println!("│   │     UP:       {}      {}", utils::conv_b(interface.transfered_bytes), interface.transfered_bytes);
-    }
-    println!("├──────────────────────────────────");
-    println!("│STORAGE DEVICES:");
-    for storage in &pc.storage_dev {
-        println!("│   ├─{}─────────────────────────────────────", storage.name);
-        println!("│   │     MAJ:MIN:     {}:{}", storage.major, storage.minor);
-        println!("│   │     SIZE:        {}    {}", utils::conv_b(storage.size), storage.size);
-        println!("│   │     PARTITIONS: ");
-        let partitions = pc.partitions.get(&String::from(&storage.name)).expect("Well");
-        for partition in partitions{
-            println!("│   │         ├─{}──────────────────────────────────", partition.name);
-            println!("│   │         │     MAJ:MIN:      {}:{}", partition.major, partition.minor);
-            println!("│   │         │     SIZE:         {}      {}", utils::conv_b(partition.size), partition.size);
-            println!("│   │         │     FILESYSTEM:   {}", partition.filesystem);
-            println!("│   │         │     MOUNTPOINT:   {}", partition.mountpoint);
+impl fmt::Display for PcInfo {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut networks = String::new();
+        for interface in &self.network_dev {
+            networks.push_str(&interface.to_string());
         }
+        let mut storage = String::new();
+        for store in &self.storage_dev {
+            storage.push_str(&store.to_string());
+        }
+        let mut partitions = String::new();
+        for parts in self.partitions.values() {
+            for p in parts {
+                partitions.push_str(&p.to_string());
+            }
+        }
+        write!(f, 
+"┌──────────────────────────────────
+│ HOSTNAME:             {}
+│ KERNEL VERSION:       {}
+│ UPTIME:               {}
+│ CPU:                  {}
+│ CPU CLOCK:            {:.2} MHz
+│ MEM:                  {}  {}
+│ MEMFREE:              {}  {}  {}%
+│ SWAP:                 {}   {}
+│ SWAPFREE:             {}   {}  {}%
+│ NETWORK DEVICE: {}
+│ STORAGE: {}
+│ PARTITIONS: {}"
+        , self.hostname, self.kernel_version, utils::conv_t(self.uptime), self.cpu,
+        self.cpu_clock,
+        utils::conv_b(self.memory), self.memory,
+        utils::conv_b(self.free_memory), self.free_memory, utils::conv_p(self.memory, self.free_memory),
+        utils::conv_b(self.swap), self.swap, 
+        utils::conv_b(self.free_swap), self.free_swap, utils::conv_p(self.swap, self.free_swap),
+        networks, storage, partitions )
+    }
+}
+impl fmt::Display for NetworkDevice {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f,"
+│   ├─{}──────────────────────────────────
+│   │     DOWN:     {}      {}
+│   │     UP:       {}      {}",
+        self.name,
+        utils::conv_b(self.received_bytes), self.received_bytes,
+        utils::conv_b(self.transfered_bytes), self.transfered_bytes
+        )
+    }
+}
+
+impl fmt::Display for Storage {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f,"        
+│   ├─{}──────────────────────────────────
+│   │     MAJ:MIN:     {}:{}
+│   │     SIZE:        {}    {}",
+        self.name,
+        self.major, self.minor,
+        utils::conv_b(self.size), self.size
+        )
+    }
+}
+
+impl fmt::Display for Partition {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f,"
+│   │         ├─{}──────────────────────────────────
+│   │         │     MAJ:MIN:     {}:{}
+│   │         │     SIZE:        {}    {}
+│   │         │     FILESYSTEM:  {}
+│   │         │     MOUNTPOINT:  {}", 
+        self.name,
+        self.major, self.minor,
+        utils::conv_b(self.size), self.size,
+        self.filesystem,
+        self.mountpoint
+        )
     }
 }
