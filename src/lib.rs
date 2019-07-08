@@ -350,7 +350,8 @@ impl fmt::Display for PcInfo {
 │ SWAPFREE:             {}   {}  {}%
 │ NETWORK DEVICE: {}
 │ STORAGE: {}
-│ PARTITIONS: {}"
+│ PARTITIONS: {}
+"
         , self.hostname, self.kernel_version, utils::conv_t(self.uptime), self.cpu,
         self.cpu_clock,
         utils::conv_b(self.memory), self.memory,

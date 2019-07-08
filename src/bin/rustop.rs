@@ -1,6 +1,30 @@
 extern crate rustop;
 use rustop::PcInfo;
+use std::fs;
 
 fn main() {
-    println!("{}", PcInfo::new().to_string());
+    let args: Vec<String> = std::env::args().collect();
+    
+    let p = PcInfo::new();
+
+    if args.len() >= 3 &&  args[1].eq("-f") {
+        fs::write(&args[2], p.to_string()).expect("Couldn't write output file");
+    }
+    else if args.len() == 2 && args[1].eq("-f"){
+        fs::write("./rust.out", p.to_string()).expect("Couldn't write output file");
+    }
+    else if args.len() > 1 && args[1].eq("-h") {
+        println!(
+"rustout v0.1.1
+Usage: rustop [options]
+
+Options:
+    -h           show this help and exit
+    -f [path]    save output to file
+");
+    }
+    else {
+        println!("{}", p.to_string());
+    }
+
 }
