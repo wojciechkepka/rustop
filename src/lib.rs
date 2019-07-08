@@ -1,9 +1,10 @@
+mod utils;
 use std::collections::HashMap;
 use std::fs;
 use regex::Regex;
 
 #[derive(Debug)] 
-enum OsProperty { CpuInfo, Hostname, OsRelease, Uptime }
+enum OsProperty { Hostname, OsRelease, Uptime }
 
 #[derive(Debug)]
 struct Partition {
@@ -55,7 +56,7 @@ impl Storage {
 enum Memory { SwapTotal, SwapFree, MemoryTotal, MemoryFree }
 
 #[derive(Debug)]
-struct PcInfo {
+pub struct PcInfo {
     hostname: String,
     kernel_version: String,
     uptime: String,
@@ -70,12 +71,12 @@ struct PcInfo {
     partitions: HashMap<String, Vec<Partition>>
 }
 impl PcInfo {
-    fn new() -> PcInfo {
+    pub fn new() -> PcInfo {
         PcInfo {
             hostname: Get::osproperty(OsProperty::Hostname),
             kernel_version: Get::osproperty(OsProperty::OsRelease),
             uptime: Get::osproperty(OsProperty::Uptime),
-            cpu: Get::osproperty(OsProperty::CpuInfo),
+            cpu: Get::cpu_info(),
             cpu_clock: Get::cpu_clock(),
             memory: Get::mem(Memory::MemoryTotal),
             free_memory: Get::mem(Memory::MemoryFree),
@@ -96,10 +97,23 @@ impl Get {
         path.push_str( match property {
             OsProperty::OsRelease => "sys/kernel/osrelease",
             OsProperty::Hostname => "sys/kernel/hostname",
-            OsProperty::CpuInfo => "cpuinfo",
             OsProperty::Uptime => "uptime"
         });
-        fs::read_to_string(path).unwrap()
+        String::from(fs::read_to_string(path).unwrap().trim_end())
+    }
+
+    fn cpu_info() -> String {
+        match fs::read_to_string("/proc/cpuinfo") {
+            Ok(res) => {
+                let re = Regex::new(r"model name\s*: (.*)").unwrap();
+                let data = re.captures(&res).unwrap();
+                String::from(&data[1])
+            },
+            Err(e) => {
+                println!("Error - {}", e);
+                String::from("")
+            }
+        }
     }
 
     fn mem(target: Memory) -> u64 {
@@ -279,96 +293,40 @@ impl Get {
     }
 }
 
-fn display_info(pc: PcInfo) {
+pub fn display_info(pc: PcInfo) {
     println!("====================================");
     println!("│HOSTNAME:         {}", pc.hostname);
     println!("│KERNEL VERSION:   {}", pc.kernel_version);
     println!("│UPTIME:           {}", pc.uptime);
     println!("│CPU:              {}", pc.cpu);
     println!("│CPU CLOCK:        {:.2} MHz", pc.cpu_clock);
-    println!("│MEM:              {}  {}", conv_b(pc.memory), pc.memory);
-    println!("│MEMFREE:          {}  {}  {}%", conv_b(pc.free_memory), pc.free_memory, conv_p(pc.memory, pc.free_memory));
-    println!("│SWAP:              {}   {}", conv_b(pc.swap), pc.swap);
-    println!("│SWAPFREE:          {}   {}  {}%", conv_b(pc.free_swap), pc.free_swap, conv_p(pc.swap, pc.free_swap));
+    println!("│MEM:              {}  {}", utils::conv_b(pc.memory), pc.memory);
+    println!("│MEMFREE:          {}  {}  {}%", utils::conv_b(pc.free_memory), pc.free_memory, utils::conv_p(pc.memory, pc.free_memory));
+    println!("│SWAP:              {}   {}", utils::conv_b(pc.swap), pc.swap);
+    println!("│SWAPFREE:          {}   {}  {}%", utils::conv_b(pc.free_swap), pc.free_swap, utils::conv_p(pc.swap, pc.free_swap));
     println!("├──────────────────────────────────");
     println!("│NETWORK DEVICES:");
     for interface in &pc.network_dev {
         println!("│   ├─{}──────────────────────────────────", interface.name);
-        println!("│   │     DOWN:     {}      {}", conv_b(interface.received_bytes), interface.received_bytes);
-        println!("│   │     UP:       {}      {}", conv_b(interface.transfered_bytes), interface.transfered_bytes);
+        println!("│   │     DOWN:     {}      {}", utils::conv_b(interface.received_bytes), interface.received_bytes);
+        println!("│   │     UP:       {}      {}", utils::conv_b(interface.transfered_bytes), interface.transfered_bytes);
     }
     println!("├──────────────────────────────────");
     println!("│STORAGE DEVICES:");
     for storage in &pc.storage_dev {
         println!("│   ├─{}─────────────────────────────────────", storage.name);
         println!("│   │     MAJ:MIN:     {}:{}", storage.major, storage.minor);
-        println!("│   │     SIZE:        {}    {}", conv_b(storage.size), storage.size);
+        println!("│   │     SIZE:        {}    {}", utils::conv_b(storage.size), storage.size);
         println!("│   │     PARTITIONS: ");
         let partitions = pc.partitions.get(&String::from(&storage.name)).expect("Well");
         for partition in partitions{
             println!("│   │         ├─{}──────────────────────────────────", partition.name);
             println!("│   │         │     MAJ:MIN:      {}:{}", partition.major, partition.minor);
-            println!("│   │         │     SIZE:         {}      {}", conv_b(partition.size), partition.size);
+            println!("│   │         │     SIZE:         {}      {}", utils::conv_b(partition.size), partition.size);
             println!("│   │         │     FILESYSTEM:   {}", partition.filesystem);
             println!("│   │         │     MOUNTPOINT:   {}", partition.mountpoint);
         }
     }
 }
 
-fn conv_p(total: u64, free: u64) -> u64 {
-    match total {
-        0 => 0,
-        _ => free * 100 / total
-    }
-}
 
-fn conv_b(bytes: u64) -> String {
-    let n: f64 = bytes as f64;
-    if n < 1024. {
-        format!("{} B", n)
-    }
-    else if 1024. <= n && n < u64::pow(1024, 2) as f64 {
-        let s = n / 1024.;
-        format!("{:.2} KB", s)
-    }
-    else if u64::pow(1024, 2) as f64 <= n && n < u64::pow(1024, 3) as f64 {
-        let s = n / u64::pow(1024, 2) as f64;
-        format!("{:.2} MB", s)
-    }
-    else if u64::pow(1024, 3) as f64 <= n && n < u64::pow(1024, 4) as f64 {
-        let s = n / u64::pow(1024, 3) as f64;
-        format!("{:.2} GB", s)
-    }
-    else {
-        let s = n / u64::pow(1024, 4) as f64;
-        format!("{:.2} TB", s)
-    }
-}
-
-fn conv_t(sec: f64) -> String {
-    if sec < 60. {
-        format!("{} seconds", sec)
-    }
-    else if 60. <= sec && sec < u64::pow(60, 2) as f64{
-        let minutes = (sec / 60.).floor();
-        let seconds = (sec % 60.).floor();
-        format!("{} minutes {} seconds", minutes, seconds)
-    }
-    else if u64::pow(60, 2) as f64 <= sec && sec < u64::pow(60, 3) as f64{
-        let hours = (sec / u64::pow(60, 2) as f64).floor();
-        let minutes = ((sec % u64::pow(60, 2) as f64) / 60.).floor();
-        let seconds = ((sec % u64::pow(60, 2) as f64) % 60.).floor();
-        format!("{} hours {} minutes {} seconds", hours, minutes, seconds)
-    }
-    else {
-        let days = (sec / (u64::pow(60, 2) as f64 * 24.)).floor();
-        let hours = ((sec % (u64::pow(60, 2) as f64 * 24.)) / u64::pow(60, 2) as f64).floor();
-        let minutes = (((sec % (u64::pow(60, 2) as f64 * 24.)) % u64::pow(60, 2) as f64) / 60.).floor();
-        let seconds = (((sec % (u64::pow(60, 2) as f64 * 24.)) % u64::pow(60, 2) as f64) % 60.).floor();
-        format!("{} days {} hours {} minutes {} seconds", days, hours, minutes, seconds)
-    }
-}
-
-fn main() {
-    display_info(PcInfo::new());
-}
