@@ -1,4 +1,3 @@
-use std::{thread, time};
 use std::collections::HashMap;
 use std::fs;
 use regex::Regex;
@@ -410,9 +409,5 @@ fn conv_t(sec: f64) -> String {
 }
 
 fn main() {
-// loop {
-// print!("{}[2J", 27 as char);
     display_info(PcInfo::new());
-// thread::sleep(time::Duration::from_secs(1));
-// }
 }

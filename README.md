@@ -1,13 +1,14 @@
 # Rustop
 All important information about your system in one place.
 ## Prerequisites
+- rustc 1.36.0
 - Linux (tested on Arch Linux for now only)
 ## Installing
-- run  `sudo ./INSTALL`
-- or compile from source with `cargo build --release`
+    $ git clone https://github.com/wojciechkepka/rustop
+    $ cargo build --release
+    $ cp target/release/rustop /usr/local/bin
 ## Running
-- run `rustop` if you installed with `INSTALL`
-- run `./rustop` in the same directory as the binary file
+    rustop
 ## Example output
     ────────────────────────────────────
     │HOSTNAME:         wojtas-arch
