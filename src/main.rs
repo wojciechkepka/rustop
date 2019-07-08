@@ -83,25 +83,25 @@ struct PcInfo {
 impl PcInfo {
     fn new() -> PcInfo {
         PcInfo {
-            hostname: Process::hostname(),
-            kernel_version: Process::kernelv(),
-            uptime: Process::uptime(),
-            cpu: Process::cpu_info(),
-            cpu_clock: Process::cpu_clock(),
-            memory: Process::mem(Memory::MemoryTotal),
-            free_memory: Process::mem(Memory::MemoryFree),
-            swap: Process::mem(Memory::SwapTotal),
-            free_swap: Process::mem(Memory::SwapFree),
-            network_dev: Process::network_dev(),
-            storage_dev: Process::storage_dev(),
-            partitions: Process::storage_partitions(Process::storage_dev())
+            hostname: Get::hostname(),
+            kernel_version: Get::kernelv(),
+            uptime: Get::uptime(),
+            cpu: Get::cpu_info(),
+            cpu_clock: Get::cpu_clock(),
+            memory: Get::mem(Memory::MemoryTotal),
+            free_memory: Get::mem(Memory::MemoryFree),
+            swap: Get::mem(Memory::SwapTotal),
+            free_swap: Get::mem(Memory::SwapFree),
+            network_dev: Get::network_dev(),
+            storage_dev: Get::storage_dev(),
+            partitions: Get::storage_partitions(Get::storage_dev())
         }
     }
 }
 
 #[derive(Debug)]
-struct Process;
-impl Process {
+struct Get;
+impl Get {
     fn hostname() -> String{
         match fs::read_to_string("/proc/sys/kernel/hostname") {
             Ok(hostname) => String::from(hostname.trim_end()),
@@ -168,7 +168,6 @@ impl Process {
     fn cpu_clock() -> f32 {
         match fs::read_to_string("/proc/cpuinfo") {
             Ok(res) => {
-                // println!("{}", res);
                 let re = Regex::new(r"cpu MHz\s*: (.*)").unwrap();
                 let mut clock_speed = 0.;
                 let mut core_count = 0;
