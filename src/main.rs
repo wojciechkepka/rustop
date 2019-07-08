@@ -3,7 +3,7 @@ use std::fs;
 use regex::Regex;
 
 #[derive(Debug)] 
-enum OsProperty { CpuInfo, Hostname, OsRelease, Uptime }
+enum OsProperty { Hostname, OsRelease, Uptime }
 
 #[derive(Debug)]
 struct Partition {
@@ -75,7 +75,7 @@ impl PcInfo {
             hostname: Get::osproperty(OsProperty::Hostname),
             kernel_version: Get::osproperty(OsProperty::OsRelease),
             uptime: Get::osproperty(OsProperty::Uptime),
-            cpu: Get::osproperty(OsProperty::CpuInfo),
+            cpu: Get::cpu_info(),
             cpu_clock: Get::cpu_clock(),
             memory: Get::mem(Memory::MemoryTotal),
             free_memory: Get::mem(Memory::MemoryFree),
@@ -96,10 +96,23 @@ impl Get {
         path.push_str( match property {
             OsProperty::OsRelease => "sys/kernel/osrelease",
             OsProperty::Hostname => "sys/kernel/hostname",
-            OsProperty::CpuInfo => "cpuinfo",
             OsProperty::Uptime => "uptime"
         });
-        fs::read_to_string(path).unwrap()
+        String::from(fs::read_to_string(path).unwrap().trim_end())
+    }
+
+    fn cpu_info() -> String {
+        match fs::read_to_string("/proc/cpuinfo") {
+            Ok(res) => {
+                let re = Regex::new(r"model name\s*: (.*)").unwrap();
+                let data = re.captures(&res).unwrap();
+                String::from(&data[1])
+            },
+            Err(e) => {
+                println!("Error - {}", e);
+                String::from("")
+            }
+        }
     }
 
     fn mem(target: Memory) -> u64 {
