@@ -61,7 +61,7 @@ enum Memory { SwapTotal, SwapFree, MemoryTotal, MemoryFree }
 pub struct PcInfo {
     hostname: String,
     kernel_version: String,
-    uptime: String,
+    uptime: f64,
     cpu: String,
     cpu_clock: f32,
     memory: u64,
@@ -78,7 +78,7 @@ impl PcInfo {
 
             hostname: Get::sysproperty(SysProperty::Hostname),
             kernel_version: Get::sysproperty(SysProperty::OsRelease),
-            uptime: Get::sysproperty(SysProperty::Uptime),
+            uptime: Get::uptime(),
             cpu: Get::cpu_info(),
             cpu_clock: Get::cpu_clock(),
             memory: Get::mem(Memory::MemoryTotal),
@@ -107,14 +107,27 @@ impl Get {
             SysProperty::CpuInfo => &Path::new("/proc/cpuinfo")
         }
     }
+
     fn sysproperty(property: SysProperty) -> String {
         let path = match property {
             SysProperty::OsRelease => Get::path(SysProperty::OsRelease),
             SysProperty::Hostname => Get::path(SysProperty::Hostname),
-            SysProperty::Uptime => Get::path(SysProperty::Uptime),
             _ => &Path::new("")
         };
         String::from(fs::read_to_string(path).unwrap().trim_end())
+    }
+
+    fn uptime() -> f64{
+        match fs::read_to_string(Get::path(SysProperty::Uptime)) {
+            Ok(res) => {
+                let data: Vec<&str> = res.split(' ').collect();
+                match data[0].parse::<f64>() {
+                    Ok(n) => n,
+                    _ => 0.
+                }
+            },
+            _ => 0.
+        }
     }
 
     fn cpu_info() -> String {
@@ -309,10 +322,10 @@ impl Get {
 }
 
 pub fn display_info(pc: PcInfo) {
-    println!("====================================");
+    println!("───────────────────────────────────");
     println!("│HOSTNAME:         {}", pc.hostname);
     println!("│KERNEL VERSION:   {}", pc.kernel_version);
-    println!("│UPTIME:           {}", pc.uptime);
+    println!("│UPTIME:           {}", utils::conv_t(pc.uptime));
     println!("│CPU:              {}", pc.cpu);
     println!("│CPU CLOCK:        {:.2} MHz", pc.cpu_clock);
     println!("│MEM:              {}  {}", utils::conv_b(pc.memory), pc.memory);
@@ -343,5 +356,3 @@ pub fn display_info(pc: PcInfo) {
         }
     }
 }
-
-
