@@ -195,10 +195,7 @@ impl Get {
         match fs::read_to_string(Get::path(SysProperty::Uptime)) {
             Ok(res) => {
                 let data: Vec<&str> = res.split(' ').collect();
-                match data[0].parse::<f64>() {
-                    Ok(n) => n,
-                    _ => 0.,
-                }
+                data[0].parse::<f64>().unwrap_or(0.)
             }
             _ => 0.,
         }
@@ -278,14 +275,8 @@ impl Get {
                 .unwrap();
                 for network_dev in re.captures_iter(&res) {
                     let mut interface = NetworkDevice::new();
-                    let received = match network_dev[2].parse::<u64>() {
-                        Ok(n) => n,
-                        _ => 0,
-                    };
-                    let transfered = match network_dev[3].parse::<u64>() {
-                        Ok(n) => n,
-                        _ => 0,
-                    };
+                    let received = network_dev[2].parse::<u64>().unwrap_or(0);
+                    let transfered = network_dev[3].parse::<u64>().unwrap_or(0);
                     interface.name = String::from(&network_dev[1]);
                     interface.received_bytes = received;
                     interface.transfered_bytes = transfered;
@@ -307,18 +298,9 @@ impl Get {
                 let re = Regex::new(r"(?m)^\s*(\d*)\s*(\d*)\s*(\d*)\s(\D*)$").unwrap();
                 for storage_dev in re.captures_iter(&res) {
                     let mut storage = Storage::new();
-                    let major = match storage_dev[1].parse::<u16>() {
-                        Ok(n) => n,
-                        _ => 0,
-                    };
-                    let minor = match storage_dev[2].parse::<u16>() {
-                        Ok(n) => n,
-                        _ => 0,
-                    };
-                    let blocks = match storage_dev[3].parse::<u64>() {
-                        Ok(n) => n,
-                        _ => 0,
-                    };
+                    let major = storage_dev[1].parse::<u16>().unwrap_or(0);
+                    let minor = storage_dev[2].parse::<u16>().unwrap_or(0);
+                    let blocks = storage_dev[3].parse::<u64>().unwrap_or(0);
                     let storage_name = &storage_dev[4];
                     storage.name = String::from(storage_name);
                     storage.major = major;
@@ -344,18 +326,9 @@ impl Get {
                 for storage_dev in re.captures_iter(&res) {
                     if &storage_dev[4][..3] == stor_name {
                         let mut partition = Partition::new();
-                        let major = match storage_dev[1].parse::<u16>() {
-                            Ok(n) => n,
-                            _ => 0,
-                        };
-                        let minor = match storage_dev[2].parse::<u16>() {
-                            Ok(n) => n,
-                            _ => 0,
-                        };
-                        let blocks = match storage_dev[3].parse::<u64>() {
-                            Ok(n) => n,
-                            _ => 0,
-                        };
+                        let major = storage_dev[1].parse::<u16>().unwrap_or(0);
+                        let minor = storage_dev[2].parse::<u16>().unwrap_or(0);
+                        let blocks = storage_dev[3].parse::<u64>().unwrap_or(0);
                         let partition_name = &storage_dev[4];
 
                         match fs::read_to_string(Get::path(SysProperty::StorMounts)) {
@@ -425,19 +398,13 @@ impl Get {
     fn lvms(vg_name: String) -> Vec<LogVolume> {
         let mut lvms_vec: Vec<LogVolume> = Vec::new();
         let cmd = Command::new("lvdisplay").output().expect("err");
-        let out = str::from_utf8(&cmd.stdout).unwrap();
+        let out = str::from_utf8(&cmd.stdout).unwrap_or("");
 
         let re = Regex::new(r"(?m)LV Path\s*(.*)\n\s*LV Name\s*(.*)$\s*VolGroup Name\s*(.*)$(?:\n.*){3}$\s*LV Status\s*(.*)(?:\n.*){7}\s*Block device\s*(\d*):(\d*)$").unwrap();
         for lvm in re.captures_iter(&out) {
             if &lvm[3] == vg_name {
-                let major = match lvm[5].parse::<u16>() {
-                    Ok(n) => n,
-                    _ => 0,
-                };
-                let minor = match lvm[6].parse::<u16>() {
-                    Ok(n) => n,
-                    _ => 0,
-                };
+                let major = lvm[5].parse::<u16>().unwrap_or(0);
+                let minor = lvm[6].parse::<u16>().unwrap_or(0);
                 lvms_vec.push(LogVolume {
                     name: String::from(&lvm[2]),
                     path: String::from(&lvm[1]),
