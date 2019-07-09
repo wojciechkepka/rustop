@@ -1,4 +1,5 @@
 mod utils;
+use serde::{Serialize, Deserialize};
 use std::fs;
 use std::fmt;
 use std::path::Path;
@@ -8,7 +9,7 @@ use regex::Regex;
 enum SysProperty {CpuInfo, Hostname, OsRelease, Uptime, Mem, NetDev, StorDev, StorMounts }
 enum Memory { SwapTotal, SwapFree, MemoryTotal, MemoryFree }
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 struct NetworkDevice { name: String, received_bytes: u64, transfered_bytes: u64 }
 impl NetworkDevice {
     fn new() -> NetworkDevice {
@@ -20,7 +21,7 @@ impl NetworkDevice {
     }
 }
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 struct Storage { name: String, major: u8, minor: u8, size: u64, partitions: Vec<Partition> }
 impl Storage {
     fn new() -> Storage {
@@ -34,7 +35,7 @@ impl Storage {
     }
 }
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 struct Partition {
     name: String,
     major: u8,
@@ -57,7 +58,7 @@ impl Partition {
     }
 }
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct PcInfo {
     hostname: String,
     kernel_version: String,
@@ -299,8 +300,6 @@ impl Get {
                             }
                             Err(e) => {
                                 println!("{}", e);
-                                partition.mountpoint = String::from("");
-                                partition.filesystem = String::from("");
                             }
                         }
                     }
@@ -368,7 +367,6 @@ impl fmt::Display for Storage {
                 partitions.push_str(&p.to_string());
         }
         write!(f,"
-│ STORAGE:
 │   ├─{}──────────────────────────────────
 │   │     MAJ:MIN:     {}:{}
 │   │     SIZE:        {}    {}
