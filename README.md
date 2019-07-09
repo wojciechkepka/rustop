@@ -10,42 +10,58 @@ All important information about your system in one place.
 ## Running
     rustop [options]
 ## Example output
-    ┌──────────────────────────────────
-    │ HOSTNAME:             wojtas-arch
-    │ KERNEL VERSION:       5.1.15-arch1-1-ARCH
-    │ UPTIME:               4 days 21 hours 56 minutes 45 seconds
-    │ CPU:                  Intel(R) Core(TM) i3-8100 CPU @ 3.60GHz
-    │ CPU CLOCK:            3600.06 MHz
-    │ MEM:                  15.54 GB  16683728896
-    │ MEMFREE:              7.35 GB  7890939904  47%
-    │ SWAP:                 0 B   0
-    │ SWAPFREE:             0 B   0  0%
-    │ NETWORK DEVICE: 
-    │   ├─enp1s0──────────────────────────────────
-    │   │     DOWN:     1.47 GB      1580596906
-    │   │     UP:       87.55 MB      91805985
-    │   ├─lo──────────────────────────────────
-    │   │     DOWN:     39.48 MB      41396007
-    │   │     UP:       39.48 MB      41396007
-    │   ├─docker0──────────────────────────────────
-    │   │     DOWN:     0 B      0
-    │   │     UP:       0 B      0
-    │ STORAGE: 
-    │   ├─sda──────────────────────────────────
-    │   │     MAJ:MIN:     8:0
-    │   │     SIZE:        223.57 GB    240057409536
-    │   │     PARTITIONS: 
-    │   │         ├─sda1──────────────────────────────────
-    │   │         │     MAJ:MIN:     8:1
-    │   │         │     SIZE:        512.00 MB    536870912
-    │   │         │     FILESYSTEM:  vfat
-    │   │         │     MOUNTPOINT:  /efi
-    │   │         ├─sda2──────────────────────────────────
-    │   │         │     MAJ:MIN:     8:2
-    │   │         │     SIZE:        223.07 GB    239519472640
-    │   │         │     FILESYSTEM:  ext4
-    │   │         │     MOUNTPOINT:  /
-
+  ┌──────────────────────────────────
+  │ HOSTNAME:             docker-cent7
+  │ KERNEL VERSION:       3.10.0-957.21.3.el7.x86_64
+  │ UPTIME:               2 hours 29 minutes 0 seconds
+  │ CPU:                  Intel(R) Core(TM) i3-8100 CPU @   3.60GHz
+  │ CPU CLOCK:            3600.00 MHz
+  │ MEM:                  2.70 GB  2894102528
+  │ MEMFREE:              1.72 GB  1843589120  63%
+  │ SWAP:                 2.87 GB   3087003648
+  │ SWAPFREE:             2.87 GB   3087003648  100%
+  │ NETWORK DEVICE: 
+  │   ├─enp0s3──────────────────────────────────
+  │   │     DOWN:     259.91 MB      272537600
+  │   │     UP:       2.19 MB      2293652
+  │   ├─lo──────────────────────────────────
+  │   │     DOWN:     0 B      0
+  │   │     UP:       0 B      0
+  │   ├─docker0──────────────────────────────────
+  │   │     DOWN:     0 B      0
+  │   │     UP:       0 B      0
+  │ STORAGE: 
+  │   ├─sda──────────────────────────────────
+  │   │     MAJ:MIN:     8:0
+  │   │     SIZE:        30.00 GB    32212254720
+  │   │     PARTITIONS: 
+  │   │         ├─sda1──────────────────────────────────
+  │   │         │     MAJ:MIN:     8:1
+  │   │         │     SIZE:        1.00 GB    1073741824
+  │   │         │     FILESYSTEM:  xfs
+  │   │         │     MOUNTPOINT:  /boot
+  │   │         ├─sda2──────────────────────────────────
+  │   │         │     MAJ:MIN:     8:2
+  │   │         │     SIZE:        29.00 GB    31137464320
+  │   │         │     FILESYSTEM:  
+  │   │         │     MOUNTPOINT:  
+  │ VOLUME GROUPS: 
+  │   ├─centos_docker-cent7──────────────────────────────────
+  │   │     FORMAT:        lvm2
+  │   │     STATUS:        resizable
+  │   │     LVMS: 
+  │   │         ├─swap──────────────────────────────────
+  │   │         │     MAJ:MIN:     253:1
+  │   │         │     SIZE:        0 B    0
+  │   │         │     PATH:  /dev/centos_docker-cent7/swap
+  │   │         │     STATUS:  available
+  │   │         │     MOUNTPOINT:  
+  │   │         ├─root──────────────────────────────────
+  │   │         │     MAJ:MIN:     253:0
+  │   │         │     SIZE:        0 B    0
+  │   │         │     PATH:  /dev/centos_docker-cent7/root
+  │   │         │     STATUS:  available
+  │   │         │     MOUNTPOINT: 
 ## Benchmarks
 It's Blazing fast :)
 
