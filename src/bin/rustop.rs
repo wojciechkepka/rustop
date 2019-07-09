@@ -22,7 +22,7 @@ fn main() {
     }
     else if args.len() > 1 && args[1].eq("-h") {
         println!(
-"rustout v0.3.0
+"rustout v0.3.1
 Usage: rustop [options]
 
 Options:

@@ -121,7 +121,8 @@ pub struct PcInfo {
     free_swap: u64,
     network_dev: Vec<NetworkDevice>,
     storage_dev: Vec<Storage>,
-    vgs: Vec<VG>
+    vgs: Vec<VG>,
+    graphics_card: String
 }
 impl PcInfo {
     pub fn new() -> PcInfo {
@@ -138,7 +139,8 @@ impl PcInfo {
             free_swap: Get::mem(Memory::SwapFree),
             network_dev: Get::network_dev(),
             storage_dev: Get::storage_dev(),
-            vgs: Get::vgs()
+            vgs: Get::vgs(),
+            graphics_card: Get::graphics_card()
         }
     }
 }
@@ -423,6 +425,20 @@ impl Get {
         }
         lvms_vec
     }
+
+    fn graphics_card() -> String {
+        let cmd = Command::new("lspci")
+                                        .output()
+                                        .expect("err");
+        let out = str::from_utf8(&cmd.stdout).unwrap();
+        let re = Regex::new(r"(?m)VGA compatible controller:\s*(.*)$").unwrap();
+        match re.captures(&out) {
+            Some(vga) => {
+                String::from(&vga[1][..40])
+            }
+            _ => String::from("")
+        }
+    }
 }
 
 impl fmt::Display for PcInfo {
@@ -446,6 +462,7 @@ impl fmt::Display for PcInfo {
 │ UPTIME:               {}
 │ CPU:                  {}
 │ CPU CLOCK:            {:.2} MHz
+│ GRAPHICS CARD:        {}
 │ MEM:                  {}  {}
 │ MEMFREE:              {}  {}  {}%
 │ SWAP:                 {}   {}
@@ -456,6 +473,7 @@ impl fmt::Display for PcInfo {
 "
         , self.hostname, self.kernel_version, utils::conv_t(self.uptime), self.cpu,
         self.cpu_clock,
+        self.graphics_card,
         utils::conv_b(self.memory), self.memory,
         utils::conv_b(self.free_memory), self.free_memory, utils::conv_p(self.memory, self.free_memory),
         utils::conv_b(self.swap), self.swap, 
