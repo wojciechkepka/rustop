@@ -69,6 +69,7 @@ struct VG {
 }
 
 impl VG {
+    #[allow(dead_code)]
     fn new() -> VG {
         VG {
             name: String::from(""),
@@ -93,6 +94,7 @@ struct Lvm {
 }
 
 impl Lvm {
+    #[allow(dead_code)]
     fn new() -> Lvm {
         Lvm {
             name: String::from(""),
@@ -366,7 +368,7 @@ impl Get {
     fn vgs() -> Vec<VG> {
         let mut vgs_vec: Vec<VG> = Vec::new();
 
-        let mut cmd = Command::new("vgdisplay")
+        let cmd = Command::new("vgdisplay")
                                         .output()
                                         .expect("err");
         let out = str::from_utf8(&cmd.stdout).unwrap();
@@ -387,7 +389,7 @@ impl Get {
 
     fn lvms(vg_name: String) -> Vec<Lvm> {
         let mut lvms_vec: Vec<Lvm> = Vec::new();
-        let mut cmd = Command::new("lvdisplay")
+        let cmd = Command::new("lvdisplay")
                                         .output()
                                         .expect("err");
         let out = str::from_utf8(&cmd.stdout).unwrap();
@@ -410,7 +412,7 @@ impl Get {
                         path: String::from(&lvm[1]),
                         vg: String::from(&lvm[3]),
                         status: String::from(&lvm[4]),
-                        size: 0,
+                        size: 0, // Not yet implemented
                         major: major,
                         minor: minor,
                         mountpoint: String::from("") // Not yet implemented
@@ -433,6 +435,10 @@ impl fmt::Display for PcInfo {
         for store in &self.storage_dev {
             storage.push_str(&store.to_string());
         }
+        let mut vgs = String::new();
+        for vg in &self.vgs {
+            vgs.push_str(&vg.to_string());
+        }
         write!(f, 
 "┌──────────────────────────────────
 │ HOSTNAME:             {}
@@ -446,6 +452,7 @@ impl fmt::Display for PcInfo {
 │ SWAPFREE:             {}   {}  {}%
 │ NETWORK DEVICE: {}
 │ STORAGE: {}
+│ VOLUME GROUPS: {}
 "
         , self.hostname, self.kernel_version, utils::conv_t(self.uptime), self.cpu,
         self.cpu_clock,
@@ -453,7 +460,7 @@ impl fmt::Display for PcInfo {
         utils::conv_b(self.free_memory), self.free_memory, utils::conv_p(self.memory, self.free_memory),
         utils::conv_b(self.swap), self.swap, 
         utils::conv_b(self.free_swap), self.free_swap, utils::conv_p(self.swap, self.free_swap),
-        networks, storage)
+        networks, storage, vgs)
     }
 }
 impl fmt::Display for NetworkDevice {
@@ -500,6 +507,42 @@ impl fmt::Display for Partition {
         self.major, self.minor,
         utils::conv_b(self.size), self.size,
         self.filesystem,
+        self.mountpoint
+        )
+    }
+}
+
+impl fmt::Display for VG {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut lvms = String::new();
+        for p in &self.lvms {
+                lvms.push_str(&p.to_string());
+        }
+        write!(f,"
+│   ├─{}──────────────────────────────────
+│   │     FORMAT:        {}
+│   │     STATUS:        {}
+│   │     LVMS: {}",
+        self.name,
+        self.format, self.status,
+        lvms
+        )
+    }
+}
+impl fmt::Display for Lvm {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f,"
+│   │         ├─{}──────────────────────────────────
+│   │         │     MAJ:MIN:     {}:{}
+│   │         │     SIZE:        {}    {}
+│   │         │     PATH:  {}
+│   │         │     STATUS:  {}
+│   │         │     MOUNTPOINT:  {}", 
+        self.name,
+        self.major, self.minor,
+        utils::conv_b(self.size), self.size,
+        self.path,
+        self.status,
         self.mountpoint
         )
     }
