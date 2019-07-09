@@ -61,17 +61,17 @@ impl Partition {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct VG {
+struct VolGroup {
     name: String,
     format: String,
     status: String,
-    lvms: Vec<Lvm>
+    lvms: Vec<LogVolume>
 }
 
-impl VG {
+impl VolGroup {
     #[allow(dead_code)]
-    fn new() -> VG {
-        VG {
+    fn new() -> VolGroup {
+        VolGroup {
             name: String::from(""),
             format: String::from(""),
             status: String::from(""),
@@ -82,7 +82,7 @@ impl VG {
 
 
 #[derive(Serialize, Deserialize, Debug)]
-struct Lvm {
+struct LogVolume {
     name: String,
     vg: String,
     path: String,
@@ -93,10 +93,10 @@ struct Lvm {
     mountpoint: String
 }
 
-impl Lvm {
+impl LogVolume {
     #[allow(dead_code)]
-    fn new() -> Lvm {
-        Lvm {
+    fn new() -> LogVolume {
+        LogVolume {
             name: String::from(""),
             vg: String::from(""),
             path: String::from(""),
@@ -121,7 +121,7 @@ pub struct PcInfo {
     free_swap: u64,
     network_dev: Vec<NetworkDevice>,
     storage_dev: Vec<Storage>,
-    vgs: Vec<VG>,
+    vgs: Vec<VolGroup>,
     graphics_card: String
 }
 impl PcInfo {
@@ -373,8 +373,8 @@ impl Get {
         }   
     }
 
-    fn vgs() -> Vec<VG> {
-        let mut vgs_vec: Vec<VG> = Vec::new();
+    fn vgs() -> Vec<VolGroup> {
+        let mut vgs_vec: Vec<VolGroup> = Vec::new();
         match fs::read_to_string(Get::path(SysProperty::StorDev)) {
             Ok(res) => {
                 let re = Regex::new(r"(?m)\d*\s*dm-").unwrap();
@@ -385,10 +385,10 @@ impl Get {
                                         .expect("err");
                         let out = str::from_utf8(&cmd.stdout).unwrap();
 
-                        let re = Regex::new(r"(?m)VG Name\s*(.*)\n.*\n\s*Format\s*(.*)$(?:\n.*){3}\s*VG Status\s*(.*)$").unwrap();
+                        let re = Regex::new(r"(?m)VolGroup Name\s*(.*)\n.*\n\s*Format\s*(.*)$(?:\n.*){3}\s*VolGroup Status\s*(.*)$").unwrap();
                         for vg in re.captures_iter(&out) {
                             vgs_vec.push(
-                                VG {
+                                VolGroup {
                                     name: String::from(&vg[1]),
                                     format: String::from(&vg[2]),
                                     status: String::from(&vg[3]),
@@ -406,14 +406,14 @@ impl Get {
         
     }
 
-    fn lvms(vg_name: String) -> Vec<Lvm> {
-        let mut lvms_vec: Vec<Lvm> = Vec::new();
+    fn lvms(vg_name: String) -> Vec<LogVolume> {
+        let mut lvms_vec: Vec<LogVolume> = Vec::new();
         let cmd = Command::new("lvdisplay")
                                         .output()
                                         .expect("err");
         let out = str::from_utf8(&cmd.stdout).unwrap();
 
-        let re = Regex::new(r"(?m)LV Path\s*(.*)\n\s*LV Name\s*(.*)$\s*VG Name\s*(.*)$(?:\n.*){3}$\s*LV Status\s*(.*)(?:\n.*){7}\s*Block device\s*(\d*):(\d*)$").unwrap();
+        let re = Regex::new(r"(?m)LV Path\s*(.*)\n\s*LV Name\s*(.*)$\s*VolGroup Name\s*(.*)$(?:\n.*){3}$\s*LV Status\s*(.*)(?:\n.*){7}\s*Block device\s*(\d*):(\d*)$").unwrap();
         for lvm in re.captures_iter(&out) {
             
             if &lvm[3] == vg_name {
@@ -426,7 +426,7 @@ impl Get {
                     _ => 0
                 };
                 lvms_vec.push(
-                    Lvm {
+                    LogVolume {
                         name: String::from(&lvm[2]),
                         path: String::from(&lvm[1]),
                         vg: String::from(&lvm[3]),
@@ -448,7 +448,7 @@ impl Get {
                                         .output()
                                         .expect("err");
         let out = str::from_utf8(&cmd.stdout).unwrap();
-        let re = Regex::new(r"(?m)VGA compatible controller:\s*(.*)$").unwrap();
+        let re = Regex::new(r"(?m)VolGroupA compatible controller:\s*(.*)$").unwrap();
         match re.captures(&out) {
             Some(vga) => {
                 String::from(&vga[1])
@@ -547,7 +547,7 @@ impl fmt::Display for Partition {
     }
 }
 
-impl fmt::Display for VG {
+impl fmt::Display for VolGroup {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut lvms = String::new();
         for p in &self.lvms {
@@ -564,7 +564,7 @@ impl fmt::Display for VG {
         )
     }
 }
-impl fmt::Display for Lvm {
+impl fmt::Display for LogVolume {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f,"
 │   │         ├─{}──────────────────────────────────
