@@ -24,7 +24,7 @@ impl NetworkDevice {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct Storage { name: String, major: u8, minor: u8, size: u64, partitions: Vec<Partition> }
+struct Storage { name: String, major: u16, minor: u16, size: u64, partitions: Vec<Partition> }
 impl Storage {
     fn new() -> Storage {
         Storage {
@@ -40,8 +40,8 @@ impl Storage {
 #[derive(Serialize, Deserialize, Debug)]
 struct Partition {
     name: String,
-    major: u8,
-    minor: u8,
+    major: u16,
+    minor: u16,
     size: u64,
     filesystem: String,
     mountpoint: String
@@ -275,11 +275,11 @@ impl Get {
                 let re = Regex::new(r"(?m)^\s*(\d*)\s*(\d*)\s*(\d*)\s(\D*)$").unwrap();
                 for storage_dev in re.captures_iter(&res) {
                     let mut storage = Storage::new();
-                    let major = match storage_dev[1].parse::<u8>() {
+                    let major = match storage_dev[1].parse::<u16>() {
                         Ok(n) => n,
                         _ => 0
                     };
-                    let minor = match storage_dev[2].parse::<u8>() {
+                    let minor = match storage_dev[2].parse::<u16>() {
                         Ok(n) => n,
                         _ => 0
                     };
@@ -312,11 +312,11 @@ impl Get {
                 for storage_dev in re.captures_iter(&res) {
                     if &storage_dev[4][..3] == stor_name {
                         let mut partition = Partition::new();
-                        let major = match storage_dev[1].parse::<u8>() {
+                        let major = match storage_dev[1].parse::<u16>() {
                             Ok(n) => n,
                             _ => 0
                         };
-                        let minor = match storage_dev[2].parse::<u8>() {
+                        let minor = match storage_dev[2].parse::<u16>() {
                             Ok(n) => n,
                             _ => 0
                         };
