@@ -451,7 +451,7 @@ impl Get {
         let re = Regex::new(r"(?m)VGA compatible controller:\s*(.*)$").unwrap();
         match re.captures(&out) {
             Some(vga) => {
-                String::from(&vga[1][..40])
+                String::from(&vga[1])
             }
             _ => String::from("")
         }
