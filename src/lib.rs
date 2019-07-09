@@ -2,6 +2,7 @@ mod utils;
 use serde::{Serialize, Deserialize};
 use std::fs;
 use std::fmt;
+use std::str;
 use std::process::Command;
 use std::path::Path;
 use regex::Regex;
@@ -85,8 +86,8 @@ struct Lvm {
     vg: String,
     path: String,
     status: String,
-    major: u8,
-    minor: u8,
+    major: u16,
+    minor: u16,
     size: u64,
     mountpoint: String
 }
@@ -118,6 +119,7 @@ pub struct PcInfo {
     free_swap: u64,
     network_dev: Vec<NetworkDevice>,
     storage_dev: Vec<Storage>,
+    vgs: Vec<VG>
 }
 impl PcInfo {
     pub fn new() -> PcInfo {
@@ -134,6 +136,7 @@ impl PcInfo {
             free_swap: Get::mem(Memory::SwapFree),
             network_dev: Get::network_dev(),
             storage_dev: Get::storage_dev(),
+            vgs: Get::vgs()
         }
     }
 }
@@ -360,8 +363,63 @@ impl Get {
         }   
     }
 
-    fn lvms() -> Vec<Lvm> {
-        Vec::new()
+    fn vgs() -> Vec<VG> {
+        let mut vgs_vec: Vec<VG> = Vec::new();
+
+        let mut cmd = Command::new("vgdisplay")
+                                        .output()
+                                        .expect("err");
+        let out = str::from_utf8(&cmd.stdout).unwrap();
+
+        let re = Regex::new(r"(?m)VG Name\s*(.*)\n.*\n\s*Format\s*(.*)$(?:\n.*){3}\s*VG Status\s*(.*)$").unwrap();
+        for vg in re.captures_iter(&out) {
+            vgs_vec.push(
+                VG {
+                    name: String::from(&vg[1]),
+                    format: String::from(&vg[2]),
+                    status: String::from(&vg[3]),
+                    lvms: Get::lvms(String::from(&vg[1]))
+                }
+            )
+        }
+        vgs_vec
+    }
+
+    fn lvms(vg_name: String) -> Vec<Lvm> {
+        let mut lvms_vec: Vec<Lvm> = Vec::new();
+        let mut cmd = Command::new("lvdisplay")
+                                        .output()
+                                        .expect("err");
+        let out = str::from_utf8(&cmd.stdout).unwrap();
+
+        let re = Regex::new(r"(?m)LV Path\s*(.*)\n\s*LV Name\s*(.*)$\s*VG Name\s*(.*)$(?:\n.*){3}$\s*LV Status\s*(.*)(?:\n.*){7}\s*Block device\s*(\d*):(\d*)$").unwrap();
+        for lvm in re.captures_iter(&out) {
+            
+            if &lvm[3] == vg_name {
+                let major = match lvm[5].parse::<u16>() {
+                    Ok(n) => n,
+                    _ => 0
+                };
+                let minor = match lvm[6].parse::<u16>() {
+                    Ok(n) => n,
+                    _ => 0
+                };
+                lvms_vec.push(
+                    Lvm {
+                        name: String::from(&lvm[2]),
+                        path: String::from(&lvm[1]),
+                        vg: String::from(&lvm[3]),
+                        status: String::from(&lvm[4]),
+                        size: 0,
+                        major: major,
+                        minor: minor,
+                        mountpoint: String::from("") // Not yet implemented
+                    }
+                )
+            }
+            
+        }
+        lvms_vec
     }
 }
 
