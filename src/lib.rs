@@ -1,5 +1,4 @@
 mod utils;
-use std::collections::HashMap;
 use std::fs;
 use std::fmt;
 use std::path::Path;
