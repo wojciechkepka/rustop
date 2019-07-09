@@ -22,11 +22,12 @@ fn main() {
     }
     else if args.len() > 1 && args[1].eq("-h") {
         println!(
-"rustout v0.1.1
+"rustout v0.2.1
 Usage: rustop [options]
 
 Options:
     -h           show this help and exit
+    -j [path]    produce JSON output       
     -f [path]    save output to file
 ");
     }
