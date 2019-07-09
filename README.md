@@ -65,7 +65,8 @@ All important information about your system in one place.
     │   │         │     MOUNTPOINT: 
 
 ## Benchmarks
-It's Blazing fast :)
+It's Blazing fast :) 
+(note: If your PC has VG setup the result might be much slower because only way(that i know of) to extract vg and lvm data is through external commands like vgdisplay and lvdisplay. Might fix it soon) 
 
     Benchmark #1: ./target/release/rustop -j # Producing JSON output
       Time (mean ± σ):       5.2 ms ±   1.2 ms    [User: 4.0 ms, System: 1.8 ms]
