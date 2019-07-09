@@ -58,6 +58,27 @@ impl Partition {
         }
     }
 }
+
+#[derive(Serialize, Deserialize, Debug)]
+struct VG {
+    name: String,
+    format: String,
+    status: String,
+    lvms: Vec<Lvm>
+}
+
+impl VG {
+    fn new() -> VG {
+        VG {
+            name: String::from(""),
+            format: String::from(""),
+            status: String::from(""),
+            lvms: Vec::new()
+        }
+    }
+}
+
+
 #[derive(Serialize, Deserialize, Debug)]
 struct Lvm {
     name: String,
