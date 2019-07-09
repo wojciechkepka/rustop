@@ -187,8 +187,10 @@ impl Get {
         match fs::read_to_string(Get::path(SysProperty::CpuInfo)) {
             Ok(res) => {
                 let re = Regex::new(r"model name\s*: (.*)").unwrap();
-                let data = re.captures(&res).unwrap();
-                String::from(&data[1])
+                match re.captures(&res) {
+                    Some(data) => String::from(&data[1]),
+                    _ => String::from("")
+                }
             },
             Err(e) => {
                 println!("Error - {}", e);
@@ -206,15 +208,19 @@ impl Get {
                     Memory::MemoryTotal => Regex::new(r"MemTotal:\s*(\d*)").unwrap(),
                     Memory::MemoryFree => Regex::new(r"MemFree:\s*(\d*)").unwrap()
                 };
-                let data = re.captures(&res).unwrap();
-                match data[1].parse::<u64>() {
-                    Ok(n) => n*1024,
-                    Err(e) => {
-                        println!("{}", e);
-                        0
+                match re.captures(&res) {
+                    Some(data) => {
+                        match data[1].parse::<u64>() {
+                            Ok(n) => n*1024,
+                            Err(e) => {
+                                println!("{}", e);
+                                0
+                            }
+                        }
                     }
+                    _ => 0
                 }
-            },
+            }
             _ => 0
         }
     } 
