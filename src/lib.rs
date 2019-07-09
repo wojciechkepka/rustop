@@ -2,6 +2,7 @@ mod utils;
 use serde::{Serialize, Deserialize};
 use std::fs;
 use std::fmt;
+use std::process::Command;
 use std::path::Path;
 use regex::Regex;
 
@@ -57,7 +58,32 @@ impl Partition {
         }
     }
 }
+#[derive(Serialize, Deserialize, Debug)]
+struct Lvm {
+    name: String,
+    vg: String,
+    path: String,
+    status: String,
+    major: u8,
+    minor: u8,
+    size: u64,
+    mountpoint: String
+}
 
+impl Lvm {
+    fn new() -> Lvm {
+        Lvm {
+            name: String::from(""),
+            vg: String::from(""),
+            path: String::from(""),
+            status: String::from(""),
+            major: 0,
+            minor: 0,
+            size: 0,
+            mountpoint: String::from("")
+        }
+    }
+}
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PcInfo {
     hostname: String,
@@ -311,6 +337,10 @@ impl Get {
                 Vec::new()
             }
         }   
+    }
+
+    fn lvms() -> Vec<Lvm> {
+        Vec::new()
     }
 }
 
