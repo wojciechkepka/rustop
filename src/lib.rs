@@ -1,30 +1,53 @@
 mod utils;
-use serde::{Serialize, Deserialize};
-use std::fs;
-use std::fmt;
-use std::str;
-use std::process::Command;
-use std::path::Path;
 use regex::Regex;
+use serde::{Deserialize, Serialize};
+use std::fmt;
+use std::fs;
+use std::path::Path;
+use std::process::Command;
+use std::str;
 
-
-enum SysProperty {CpuInfo, Hostname, OsRelease, Uptime, Mem, NetDev, StorDev, StorMounts }
-enum Memory { SwapTotal, SwapFree, MemoryTotal, MemoryFree }
+enum SysProperty {
+    CpuInfo,
+    Hostname,
+    OsRelease,
+    Uptime,
+    Mem,
+    NetDev,
+    StorDev,
+    StorMounts,
+}
+enum Memory {
+    SwapTotal,
+    SwapFree,
+    MemoryTotal,
+    MemoryFree,
+}
 
 #[derive(Serialize, Deserialize, Debug)]
-struct NetworkDevice { name: String, received_bytes: u64, transfered_bytes: u64 }
+struct NetworkDevice {
+    name: String,
+    received_bytes: u64,
+    transfered_bytes: u64,
+}
 impl NetworkDevice {
     fn new() -> NetworkDevice {
         NetworkDevice {
             name: String::from(""),
             received_bytes: 0,
-            transfered_bytes: 0
+            transfered_bytes: 0,
         }
     }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct Storage { name: String, major: u16, minor: u16, size: u64, partitions: Vec<Partition> }
+struct Storage {
+    name: String,
+    major: u16,
+    minor: u16,
+    size: u64,
+    partitions: Vec<Partition>,
+}
 impl Storage {
     fn new() -> Storage {
         Storage {
@@ -32,7 +55,7 @@ impl Storage {
             major: 0,
             minor: 0,
             size: 0,
-            partitions: Vec::new()
+            partitions: Vec::new(),
         }
     }
 }
@@ -44,7 +67,7 @@ struct Partition {
     minor: u16,
     size: u64,
     filesystem: String,
-    mountpoint: String
+    mountpoint: String,
 }
 
 impl Partition {
@@ -55,7 +78,7 @@ impl Partition {
             minor: 0,
             size: 0,
             filesystem: String::from(""),
-            mountpoint: String::from("")
+            mountpoint: String::from(""),
         }
     }
 }
@@ -65,7 +88,7 @@ struct VolGroup {
     name: String,
     format: String,
     status: String,
-    lvms: Vec<LogVolume>
+    lvms: Vec<LogVolume>,
 }
 
 impl VolGroup {
@@ -75,11 +98,10 @@ impl VolGroup {
             name: String::from(""),
             format: String::from(""),
             status: String::from(""),
-            lvms: Vec::new()
+            lvms: Vec::new(),
         }
     }
 }
-
 
 #[derive(Serialize, Deserialize, Debug)]
 struct LogVolume {
@@ -90,7 +112,7 @@ struct LogVolume {
     major: u16,
     minor: u16,
     size: u64,
-    mountpoint: String
+    mountpoint: String,
 }
 
 impl LogVolume {
@@ -104,7 +126,7 @@ impl LogVolume {
             major: 0,
             minor: 0,
             size: 0,
-            mountpoint: String::from("")
+            mountpoint: String::from(""),
         }
     }
 }
@@ -122,12 +144,11 @@ pub struct PcInfo {
     network_dev: Vec<NetworkDevice>,
     storage_dev: Vec<Storage>,
     vgs: Vec<VolGroup>,
-    graphics_card: String
+    graphics_card: String,
 }
 impl PcInfo {
     pub fn new() -> PcInfo {
         PcInfo {
-
             hostname: Get::sysproperty(SysProperty::Hostname),
             kernel_version: Get::sysproperty(SysProperty::OsRelease),
             uptime: Get::uptime(),
@@ -140,7 +161,7 @@ impl PcInfo {
             network_dev: Get::network_dev(),
             storage_dev: Get::storage_dev(),
             vgs: Get::vgs(),
-            graphics_card: Get::graphics_card()
+            graphics_card: Get::graphics_card(),
         }
     }
 }
@@ -157,7 +178,7 @@ impl Get {
             SysProperty::NetDev => &Path::new("/proc/net/dev"),
             SysProperty::StorDev => &Path::new("/proc/partitions"),
             SysProperty::StorMounts => &Path::new("/proc/mounts"),
-            SysProperty::CpuInfo => &Path::new("/proc/cpuinfo")
+            SysProperty::CpuInfo => &Path::new("/proc/cpuinfo"),
         }
     }
 
@@ -165,21 +186,21 @@ impl Get {
         let path = match property {
             SysProperty::OsRelease => Get::path(SysProperty::OsRelease),
             SysProperty::Hostname => Get::path(SysProperty::Hostname),
-            _ => &Path::new("")
+            _ => &Path::new(""),
         };
         String::from(fs::read_to_string(path).unwrap().trim_end())
     }
 
-    fn uptime() -> f64{
+    fn uptime() -> f64 {
         match fs::read_to_string(Get::path(SysProperty::Uptime)) {
             Ok(res) => {
                 let data: Vec<&str> = res.split(' ').collect();
                 match data[0].parse::<f64>() {
                     Ok(n) => n,
-                    _ => 0.
+                    _ => 0.,
                 }
-            },
-            _ => 0.
+            }
+            _ => 0.,
         }
     }
 
@@ -189,9 +210,9 @@ impl Get {
                 let re = Regex::new(r"model name\s*: (.*)").unwrap();
                 match re.captures(&res) {
                     Some(data) => String::from(&data[1]),
-                    _ => String::from("")
+                    _ => String::from(""),
                 }
-            },
+            }
             Err(e) => {
                 println!("Error - {}", e);
                 String::from("")
@@ -206,24 +227,22 @@ impl Get {
                     Memory::SwapFree => Regex::new(r"SwapFree:\s*(\d*)").unwrap(),
                     Memory::SwapTotal => Regex::new(r"SwapTotal:\s*(\d*)").unwrap(),
                     Memory::MemoryTotal => Regex::new(r"MemTotal:\s*(\d*)").unwrap(),
-                    Memory::MemoryFree => Regex::new(r"MemFree:\s*(\d*)").unwrap()
+                    Memory::MemoryFree => Regex::new(r"MemFree:\s*(\d*)").unwrap(),
                 };
                 match re.captures(&res) {
-                    Some(data) => {
-                        match data[1].parse::<u64>() {
-                            Ok(n) => n*1024,
-                            Err(e) => {
-                                println!("{}", e);
-                                0
-                            }
+                    Some(data) => match data[1].parse::<u64>() {
+                        Ok(n) => n * 1024,
+                        Err(e) => {
+                            println!("{}", e);
+                            0
                         }
-                    }
-                    _ => 0
+                    },
+                    _ => 0,
                 }
             }
-            _ => 0
+            _ => 0,
         }
-    } 
+    }
 
     fn cpu_clock() -> f32 {
         match fs::read_to_string(Get::path(SysProperty::CpuInfo)) {
@@ -237,11 +256,11 @@ impl Get {
                             clock_speed += n;
                             core_count += 1;
                         }
-                        Err(e) => println!("Error - {}", e)
+                        Err(e) => println!("Error - {}", e),
                     }
                 }
                 clock_speed / core_count as f32
-            },
+            }
             Err(e) => {
                 println!("Error - {}", e);
                 0.
@@ -253,16 +272,19 @@ impl Get {
         let mut devices = Vec::new();
         match fs::read_to_string(Get::path(SysProperty::NetDev)) {
             Ok(res) => {
-                let re = Regex::new(r"([\d\w]*):\s*(\d*)\s*\d*\s*\d*\s*\d*\s*\d*\s*\d*\s*\d*\s*\d*\s*(\d*)").unwrap();
+                let re = Regex::new(
+                    r"([\d\w]*):\s*(\d*)\s*\d*\s*\d*\s*\d*\s*\d*\s*\d*\s*\d*\s*\d*\s*(\d*)",
+                )
+                .unwrap();
                 for network_dev in re.captures_iter(&res) {
                     let mut interface = NetworkDevice::new();
                     let received = match network_dev[2].parse::<u64>() {
                         Ok(n) => n,
-                        _ => 0
+                        _ => 0,
                     };
                     let transfered = match network_dev[3].parse::<u64>() {
                         Ok(n) => n,
-                        _ => 0
+                        _ => 0,
                     };
                     interface.name = String::from(&network_dev[1]);
                     interface.received_bytes = received;
@@ -270,7 +292,7 @@ impl Get {
                     devices.push(interface);
                 }
                 devices
-            },
+            }
             Err(e) => {
                 println!("Error - {}", e);
                 devices
@@ -287,26 +309,26 @@ impl Get {
                     let mut storage = Storage::new();
                     let major = match storage_dev[1].parse::<u16>() {
                         Ok(n) => n,
-                        _ => 0
+                        _ => 0,
                     };
                     let minor = match storage_dev[2].parse::<u16>() {
                         Ok(n) => n,
-                        _ => 0
+                        _ => 0,
                     };
                     let blocks = match storage_dev[3].parse::<u64>() {
                         Ok(n) => n,
-                        _ => 0
+                        _ => 0,
                     };
                     let storage_name = &storage_dev[4];
                     storage.name = String::from(storage_name);
                     storage.major = major;
                     storage.minor = minor;
-                    storage.size = blocks*1024;
+                    storage.size = blocks * 1024;
                     storage.partitions = Get::storage_partitions(&storage.name);
                     devices.push(storage);
                 }
                 devices
-            },
+            }
             Err(e) => {
                 println!("Error - {}", e);
                 devices
@@ -324,18 +346,18 @@ impl Get {
                         let mut partition = Partition::new();
                         let major = match storage_dev[1].parse::<u16>() {
                             Ok(n) => n,
-                            _ => 0
+                            _ => 0,
                         };
                         let minor = match storage_dev[2].parse::<u16>() {
                             Ok(n) => n,
-                            _ => 0
+                            _ => 0,
                         };
                         let blocks = match storage_dev[3].parse::<u64>() {
                             Ok(n) => n,
-                            _ => 0
+                            _ => 0,
                         };
                         let partition_name = &storage_dev[4];
-                        
+
                         match fs::read_to_string(Get::path(SysProperty::StorMounts)) {
                             Ok(data) => {
                                 let rere = Regex::new(r"/dev/(\w*)\s(\S*)\s(\S*)").unwrap();
@@ -346,8 +368,7 @@ impl Get {
                                         partition.mountpoint = String::from(mountpoint);
                                         partition.filesystem = String::from(filesystem);
                                         break;
-                                    }
-                                    else {
+                                    } else {
                                         partition.mountpoint = String::from("");
                                         partition.filesystem = String::from("");
                                     }
@@ -355,7 +376,7 @@ impl Get {
                                 partition.name = String::from(partition_name);
                                 partition.major = major;
                                 partition.minor = minor;
-                                partition.size = blocks*1024;
+                                partition.size = blocks * 1024;
                                 partitions.push(partition);
                             }
                             Err(e) => {
@@ -370,7 +391,7 @@ impl Get {
                 println!("Error - {}", e);
                 Vec::new()
             }
-        }   
+        }
     }
 
     fn vgs() -> Vec<VolGroup> {
@@ -380,80 +401,65 @@ impl Get {
                 let re = Regex::new(r"(?m)\d*\s*dm-").unwrap();
                 match re.captures(&res) {
                     Some(_n) => {
-                        let cmd = Command::new("vgdisplay")
-                                        .output()
-                                        .expect("err");
+                        let cmd = Command::new("vgdisplay").output().expect("err");
                         let out = str::from_utf8(&cmd.stdout).unwrap();
 
                         let re = Regex::new(r"(?m)VolGroup Name\s*(.*)\n.*\n\s*Format\s*(.*)$(?:\n.*){3}\s*VolGroup Status\s*(.*)$").unwrap();
                         for vg in re.captures_iter(&out) {
-                            vgs_vec.push(
-                                VolGroup {
-                                    name: String::from(&vg[1]),
-                                    format: String::from(&vg[2]),
-                                    status: String::from(&vg[3]),
-                                    lvms: Get::lvms(String::from(&vg[1]))
-                                }
-                            )
+                            vgs_vec.push(VolGroup {
+                                name: String::from(&vg[1]),
+                                format: String::from(&vg[2]),
+                                status: String::from(&vg[3]),
+                                lvms: Get::lvms(String::from(&vg[1])),
+                            })
                         }
                         vgs_vec
                     }
-                    _ => vgs_vec
+                    _ => vgs_vec,
                 }
             }
-            _ => vgs_vec
+            _ => vgs_vec,
         }
-        
     }
 
     fn lvms(vg_name: String) -> Vec<LogVolume> {
         let mut lvms_vec: Vec<LogVolume> = Vec::new();
-        let cmd = Command::new("lvdisplay")
-                                        .output()
-                                        .expect("err");
+        let cmd = Command::new("lvdisplay").output().expect("err");
         let out = str::from_utf8(&cmd.stdout).unwrap();
 
         let re = Regex::new(r"(?m)LV Path\s*(.*)\n\s*LV Name\s*(.*)$\s*VolGroup Name\s*(.*)$(?:\n.*){3}$\s*LV Status\s*(.*)(?:\n.*){7}\s*Block device\s*(\d*):(\d*)$").unwrap();
         for lvm in re.captures_iter(&out) {
-            
             if &lvm[3] == vg_name {
                 let major = match lvm[5].parse::<u16>() {
                     Ok(n) => n,
-                    _ => 0
+                    _ => 0,
                 };
                 let minor = match lvm[6].parse::<u16>() {
                     Ok(n) => n,
-                    _ => 0
+                    _ => 0,
                 };
-                lvms_vec.push(
-                    LogVolume {
-                        name: String::from(&lvm[2]),
-                        path: String::from(&lvm[1]),
-                        vg: String::from(&lvm[3]),
-                        status: String::from(&lvm[4]),
-                        size: 0, // Not yet implemented
-                        major: major,
-                        minor: minor,
-                        mountpoint: String::from("") // Not yet implemented
-                    }
-                )
+                lvms_vec.push(LogVolume {
+                    name: String::from(&lvm[2]),
+                    path: String::from(&lvm[1]),
+                    vg: String::from(&lvm[3]),
+                    status: String::from(&lvm[4]),
+                    size: 0, // Not yet implemented
+                    major: major,
+                    minor: minor,
+                    mountpoint: String::from(""), // Not yet implemented
+                })
             }
-            
         }
         lvms_vec
     }
 
     fn graphics_card() -> String {
-        let cmd = Command::new("lspci")
-                                        .output()
-                                        .expect("err");
+        let cmd = Command::new("lspci").output().expect("err");
         let out = str::from_utf8(&cmd.stdout).unwrap();
         let re = Regex::new(r"(?m)VolGroupA compatible controller:\s*(.*)$").unwrap();
         match re.captures(&out) {
-            Some(vga) => {
-                String::from(&vga[1])
-            }
-            _ => String::from("")
+            Some(vga) => String::from(&vga[1]),
+            _ => String::from(""),
         }
     }
 }
@@ -472,8 +478,9 @@ impl fmt::Display for PcInfo {
         for vg in &self.vgs {
             vgs.push_str(&vg.to_string());
         }
-        write!(f, 
-"┌──────────────────────────────────
+        write!(
+            f,
+            "┌──────────────────────────────────
 │ HOSTNAME:             {}
 │ KERNEL VERSION:       {}
 │ UPTIME:               {}
@@ -487,26 +494,42 @@ impl fmt::Display for PcInfo {
 │ NETWORK DEVICE: {}
 │ STORAGE: {}
 │ VOLUME GROUPS: {}
-"
-        , self.hostname, self.kernel_version, utils::conv_t(self.uptime), self.cpu,
-        self.cpu_clock,
-        self.graphics_card,
-        utils::conv_b(self.memory), self.memory,
-        utils::conv_b(self.free_memory), self.free_memory, utils::conv_p(self.memory, self.free_memory),
-        utils::conv_b(self.swap), self.swap, 
-        utils::conv_b(self.free_swap), self.free_swap, utils::conv_p(self.swap, self.free_swap),
-        networks, storage, vgs)
+",
+            self.hostname,
+            self.kernel_version,
+            utils::conv_t(self.uptime),
+            self.cpu,
+            self.cpu_clock,
+            self.graphics_card,
+            utils::conv_b(self.memory),
+            self.memory,
+            utils::conv_b(self.free_memory),
+            self.free_memory,
+            utils::conv_p(self.memory, self.free_memory),
+            utils::conv_b(self.swap),
+            self.swap,
+            utils::conv_b(self.free_swap),
+            self.free_swap,
+            utils::conv_p(self.swap, self.free_swap),
+            networks,
+            storage,
+            vgs
+        )
     }
 }
 impl fmt::Display for NetworkDevice {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f,"
+        write!(
+            f,
+            "
 │   ├─{}──────────────────────────────────
 │   │     DOWN:     {}      {}
 │   │     UP:       {}      {}",
-        self.name,
-        utils::conv_b(self.received_bytes), self.received_bytes,
-        utils::conv_b(self.transfered_bytes), self.transfered_bytes
+            self.name,
+            utils::conv_b(self.received_bytes),
+            self.received_bytes,
+            utils::conv_b(self.transfered_bytes),
+            self.transfered_bytes
         )
     }
 }
@@ -515,34 +538,42 @@ impl fmt::Display for Storage {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut partitions = String::new();
         for p in &self.partitions {
-                partitions.push_str(&p.to_string());
+            partitions.push_str(&p.to_string());
         }
-        write!(f,"
+        write!(
+            f,
+            "
 │   ├─{}──────────────────────────────────
 │   │     MAJ:MIN:     {}:{}
 │   │     SIZE:        {}    {}
 │   │     PARTITIONS: {}",
-        self.name,
-        self.major, self.minor,
-        utils::conv_b(self.size), self.size,
-        partitions
+            self.name,
+            self.major,
+            self.minor,
+            utils::conv_b(self.size),
+            self.size,
+            partitions
         )
     }
 }
 
 impl fmt::Display for Partition {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f,"
+        write!(
+            f,
+            "
 │   │         ├─{}──────────────────────────────────
 │   │         │     MAJ:MIN:     {}:{}
 │   │         │     SIZE:        {}    {}
 │   │         │     FILESYSTEM:  {}
-│   │         │     MOUNTPOINT:  {}", 
-        self.name,
-        self.major, self.minor,
-        utils::conv_b(self.size), self.size,
-        self.filesystem,
-        self.mountpoint
+│   │         │     MOUNTPOINT:  {}",
+            self.name,
+            self.major,
+            self.minor,
+            utils::conv_b(self.size),
+            self.size,
+            self.filesystem,
+            self.mountpoint
         )
     }
 }
@@ -551,34 +582,38 @@ impl fmt::Display for VolGroup {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut lvms = String::new();
         for p in &self.lvms {
-                lvms.push_str(&p.to_string());
+            lvms.push_str(&p.to_string());
         }
-        write!(f,"
+        write!(
+            f,
+            "
 │   ├─{}──────────────────────────────────
 │   │     FORMAT:        {}
 │   │     STATUS:        {}
 │   │     LVMS: {}",
-        self.name,
-        self.format, self.status,
-        lvms
+            self.name, self.format, self.status, lvms
         )
     }
 }
 impl fmt::Display for LogVolume {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f,"
+        write!(
+            f,
+            "
 │   │         ├─{}──────────────────────────────────
 │   │         │     MAJ:MIN:     {}:{}
 │   │         │     SIZE:        {}    {}
 │   │         │     PATH:  {}
 │   │         │     STATUS:  {}
-│   │         │     MOUNTPOINT:  {}", 
-        self.name,
-        self.major, self.minor,
-        utils::conv_b(self.size), self.size,
-        self.path,
-        self.status,
-        self.mountpoint
+│   │         │     MOUNTPOINT:  {}",
+            self.name,
+            self.major,
+            self.minor,
+            utils::conv_b(self.size),
+            self.size,
+            self.path,
+            self.status,
+            self.mountpoint
         )
     }
 }
