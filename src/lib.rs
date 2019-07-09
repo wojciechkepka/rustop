@@ -375,24 +375,35 @@ impl Get {
 
     fn vgs() -> Vec<VG> {
         let mut vgs_vec: Vec<VG> = Vec::new();
-
-        let cmd = Command::new("vgdisplay")
+        match fs::read_to_string(Get::path(SysProperty::StorDev)) {
+            Ok(res) => {
+                let re = Regex::new(r"(?m)\d*\s*dm-").unwrap();
+                match re.captures(&res) {
+                    Some(_n) => {
+                        let cmd = Command::new("vgdisplay")
                                         .output()
                                         .expect("err");
-        let out = str::from_utf8(&cmd.stdout).unwrap();
+                        let out = str::from_utf8(&cmd.stdout).unwrap();
 
-        let re = Regex::new(r"(?m)VG Name\s*(.*)\n.*\n\s*Format\s*(.*)$(?:\n.*){3}\s*VG Status\s*(.*)$").unwrap();
-        for vg in re.captures_iter(&out) {
-            vgs_vec.push(
-                VG {
-                    name: String::from(&vg[1]),
-                    format: String::from(&vg[2]),
-                    status: String::from(&vg[3]),
-                    lvms: Get::lvms(String::from(&vg[1]))
+                        let re = Regex::new(r"(?m)VG Name\s*(.*)\n.*\n\s*Format\s*(.*)$(?:\n.*){3}\s*VG Status\s*(.*)$").unwrap();
+                        for vg in re.captures_iter(&out) {
+                            vgs_vec.push(
+                                VG {
+                                    name: String::from(&vg[1]),
+                                    format: String::from(&vg[2]),
+                                    status: String::from(&vg[3]),
+                                    lvms: Get::lvms(String::from(&vg[1]))
+                                }
+                            )
+                        }
+                        vgs_vec
+                    }
+                    _ => vgs_vec
                 }
-            )
+            }
+            _ => vgs_vec
         }
-        vgs_vec
+        
     }
 
     fn lvms(vg_name: String) -> Vec<Lvm> {
