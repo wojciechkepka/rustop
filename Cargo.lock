@@ -61,7 +61,7 @@ dependencies = [
 
 [[package]]
 name = "rustop"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "regex 1.1.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.94 (registry+https://github.com/rust-lang/crates.io-index)",

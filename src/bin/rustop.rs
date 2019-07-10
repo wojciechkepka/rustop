@@ -17,7 +17,7 @@ fn main() {
         println!("{}", serde_json::to_string(&p).unwrap());
     } else if args.len() > 1 && args[1].eq("-h") {
         println!(
-            "rustout v0.3.2
+            "rustout v0.3.3
 Usage: rustop [options]
 
 Options:
