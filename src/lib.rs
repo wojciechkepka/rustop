@@ -35,7 +35,7 @@ struct NetworkDevice {
 impl NetworkDevice {
     fn new() -> NetworkDevice {
         NetworkDevice {
-            name: String::from(""),
+            name: "".to_string(),
             received_bytes: 0,
             transfered_bytes: 0,
         }
@@ -53,7 +53,7 @@ struct Storage {
 impl Storage {
     fn new() -> Storage {
         Storage {
-            name: String::from(""),
+            name: "".to_string(),
             major: 0,
             minor: 0,
             size: 0,
@@ -75,12 +75,12 @@ struct Partition {
 impl Partition {
     fn new() -> Partition {
         Partition {
-            name: String::from(""),
+            name: "".to_string(),
             major: 0,
             minor: 0,
             size: 0,
-            filesystem: String::from(""),
-            mountpoint: String::from(""),
+            filesystem: "".to_string(),
+            mountpoint: "".to_string(),
         }
     }
 }
@@ -97,9 +97,9 @@ impl VolGroup {
     #[allow(dead_code)]
     fn new() -> VolGroup {
         VolGroup {
-            name: String::from(""),
-            format: String::from(""),
-            status: String::from(""),
+            name: "".to_string(),
+            format: "".to_string(),
+            status: "".to_string(),
             lvms: vec![],
         }
     }
@@ -121,14 +121,14 @@ impl LogVolume {
     #[allow(dead_code)]
     fn new() -> LogVolume {
         LogVolume {
-            name: String::from(""),
-            vg: String::from(""),
-            path: String::from(""),
-            status: String::from(""),
+            name: "".to_string(),
+            vg: "".to_string(),
+            path: "".to_string(),
+            status: "".to_string(),
             major: 0,
             minor: 0,
             size: 0,
-            mountpoint: String::from(""),
+            mountpoint: "".to_string(),
         }
     }
 }
