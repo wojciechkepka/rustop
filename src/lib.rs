@@ -22,8 +22,8 @@ enum SysProperty {
 enum Memory {
     SwapTotal,
     SwapFree,
-    MemoryTotal,
-    MemoryFree,
+    MemTotal,
+    MemFree,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -57,7 +57,7 @@ impl Storage {
             major: 0,
             minor: 0,
             size: 0,
-            partitions: Vec::new(),
+            partitions: vec![],
         }
     }
 }
@@ -100,7 +100,7 @@ impl VolGroup {
             name: String::from(""),
             format: String::from(""),
             status: String::from(""),
-            lvms: Vec::new(),
+            lvms: vec![],
         }
     }
 }
@@ -176,14 +176,31 @@ impl PcInfo {
             uptime: Get::uptime(),
             cpu: Get::cpu_info(),
             cpu_clock: Get::cpu_clock(),
-            memory: Get::mem(Memory::MemoryTotal),
-            free_memory: Get::mem(Memory::MemoryFree),
+            memory: Get::mem(Memory::MemTotal),
+            free_memory: Get::mem(Memory::MemFree),
             swap: Get::mem(Memory::SwapTotal),
             free_swap: Get::mem(Memory::SwapFree),
             network_dev: Get::network_dev(),
             storage_dev: Get::storage_dev(),
-            vgs: vgs,
-            graphics_card: graphics_card,
+            vgs,
+            graphics_card,
+        }
+    }
+    pub fn default() -> PcInfo {
+        PcInfo {
+            hostname: "".to_string(),
+            kernel_version: "".to_string(),
+            uptime: 0.,
+            cpu: "".to_string(),
+            cpu_clock: 0.,
+            memory: 0,
+            free_memory: 0,
+            swap: 0,
+            free_swap: 0,
+            network_dev: vec![],
+            storage_dev: vec![],
+            vgs: vec![],
+            graphics_card: "".to_string(),
         }
     }
 }
@@ -228,13 +245,13 @@ impl Get {
             Ok(res) => {
                 let re = Regex::new(r"model name\s*: (.*)").unwrap();
                 match re.captures(&res) {
-                    Some(data) => String::from(&data[1]),
-                    _ => String::from(""),
+                    Some(data) => data[1].to_string(),
+                    _ => "".to_string(),
                 }
             }
             Err(e) => {
                 println!("Error - {}", e);
-                String::from("")
+                "".to_string()
             }
         }
     }
@@ -245,8 +262,8 @@ impl Get {
                 let re = match target {
                     Memory::SwapFree => Regex::new(r"SwapFree:\s*(\d*)").unwrap(),
                     Memory::SwapTotal => Regex::new(r"SwapTotal:\s*(\d*)").unwrap(),
-                    Memory::MemoryTotal => Regex::new(r"MemTotal:\s*(\d*)").unwrap(),
-                    Memory::MemoryFree => Regex::new(r"MemFree:\s*(\d*)").unwrap(),
+                    Memory::MemTotal => Regex::new(r"MemTotal:\s*(\d*)").unwrap(),
+                    Memory::MemFree => Regex::new(r"MemFree:\s*(\d*)").unwrap(),
                 };
                 match re.captures(&res) {
                     Some(data) => match data[1].parse::<u64>() {
@@ -288,7 +305,7 @@ impl Get {
     }
 
     fn network_dev() -> Vec<NetworkDevice> {
-        let mut devices = Vec::new();
+        let mut devices = vec![];
         match fs::read_to_string(Get::path(SysProperty::NetDev)) {
             Ok(res) => {
                 let re = Regex::new(
@@ -299,7 +316,7 @@ impl Get {
                     let mut interface = NetworkDevice::new();
                     let received = network_dev[2].parse::<u64>().unwrap_or(0);
                     let transfered = network_dev[3].parse::<u64>().unwrap_or(0);
-                    interface.name = String::from(&network_dev[1]);
+                    interface.name = network_dev[1].to_string();
                     interface.received_bytes = received;
                     interface.transfered_bytes = transfered;
                     devices.push(interface);
@@ -314,7 +331,7 @@ impl Get {
     }
 
     fn storage_dev() -> Vec<Storage> {
-        let mut devices = Vec::new();
+        let mut devices = vec![];
         match fs::read_to_string(Get::path(SysProperty::StorDev)) {
             Ok(res) => {
                 let re = Regex::new(r"(?m)^\s*(\d*)\s*(\d*)\s*(\d*)\s(\D*)$").unwrap();
@@ -324,7 +341,7 @@ impl Get {
                     let minor = storage_dev[2].parse::<u16>().unwrap_or(0);
                     let blocks = storage_dev[3].parse::<u64>().unwrap_or(0);
                     let storage_name = &storage_dev[4];
-                    storage.name = String::from(storage_name);
+                    storage.name = storage_name.to_string();
                     storage.major = major;
                     storage.minor = minor;
                     storage.size = blocks * 1024;
@@ -343,7 +360,7 @@ impl Get {
     fn storage_partitions(stor_name: &str) -> Vec<Partition> {
         match fs::read_to_string(Get::path(SysProperty::StorDev)) {
             Ok(res) => {
-                let mut partitions = Vec::new();
+                let mut partitions = vec![];
                 let re = Regex::new(r"(?m)^\s*(\d*)\s*(\d*)\s*(\d*)\s(\w*\d+)$").unwrap();
                 for storage_dev in re.captures_iter(&res) {
                     if &storage_dev[4][..3] == stor_name {
@@ -360,15 +377,15 @@ impl Get {
                                     if &found_partition[1] == partition_name {
                                         let mountpoint = &found_partition[2];
                                         let filesystem = &found_partition[3];
-                                        partition.mountpoint = String::from(mountpoint);
-                                        partition.filesystem = String::from(filesystem);
+                                        partition.mountpoint = mountpoint.to_string();
+                                        partition.filesystem = filesystem.to_string();
                                         break;
                                     } else {
-                                        partition.mountpoint = String::from("");
-                                        partition.filesystem = String::from("");
+                                        partition.mountpoint = "".to_string();
+                                        partition.filesystem = "".to_string();
                                     }
                                 }
-                                partition.name = String::from(partition_name);
+                                partition.name = partition_name.to_string();
                                 partition.major = major;
                                 partition.minor = minor;
                                 partition.size = blocks * 1024;
@@ -384,13 +401,13 @@ impl Get {
             }
             Err(e) => {
                 println!("Error - {}", e);
-                Vec::new()
+                vec![]
             }
         }
     }
 
     fn vgs() -> Vec<VolGroup> {
-        let mut vgs_vec: Vec<VolGroup> = Vec::new();
+        let mut vgs_vec: Vec<VolGroup> = vec![];
         match fs::read_to_string(Get::path(SysProperty::StorDev)) {
             Ok(res) => {
                 let re = Regex::new(r"(?m)\d*\s*dm-").unwrap();
@@ -402,10 +419,10 @@ impl Get {
                         let r = Regex::new(r"(?m)VG Name\s*(.*)\n.*\n\s*Format\s*(.*)$(?:\n.*){3}\s*VG Status\s*(.*)$").unwrap();
                         for vg in r.captures_iter(&out) {
                             vgs_vec.push(VolGroup {
-                                name: String::from(&vg[1]),
-                                format: String::from(&vg[2]),
-                                status: String::from(&vg[3]),
-                                lvms: Get::lvms(String::from(&vg[1])),
+                                name: vg[1].to_string(),
+                                format: vg[2].to_string(),
+                                status: vg[3].to_string(),
+                                lvms: Get::lvms(vg[1].to_string()),
                             })
                         }
                         vgs_vec
@@ -418,23 +435,23 @@ impl Get {
     }
 
     fn lvms(vg_name: String) -> Vec<LogVolume> {
-        let mut lvms_vec: Vec<LogVolume> = Vec::new();
+        let mut lvms_vec: Vec<LogVolume> = vec![];
         let cmd = Command::new("lvdisplay").output().expect("err");
         let out = str::from_utf8(&cmd.stdout).unwrap_or("");
         let re = Regex::new(r"(?m)LV Path\s*(.*)\n\s*LV Name\s*(.*)$\s*VG Name\s*(.*)$(?:\n.*){3}$\s*LV Status\s*(.*)(?:\n.*){7}\s*Block device\s*(\d*):(\d*)$").unwrap();
         for lvm in re.captures_iter(&out) {
-            if &lvm[3] == vg_name {
+            if lvm[3] == vg_name {
                 let major = lvm[5].parse::<u16>().unwrap_or(0);
                 let minor = lvm[6].parse::<u16>().unwrap_or(0);
                 lvms_vec.push(LogVolume {
-                    name: String::from(&lvm[2]),
-                    path: String::from(&lvm[1]),
-                    vg: String::from(&lvm[3]),
-                    status: String::from(&lvm[4]),
+                    name: lvm[2].to_string(),
+                    path: lvm[1].to_string(),
+                    vg: lvm[3].to_string(),
+                    status: lvm[4].to_string(),
                     size: 0, // Not yet implemented
-                    major: major,
-                    minor: minor,
-                    mountpoint: String::from(""), // Not yet implemented
+                    major,
+                    minor,
+                    mountpoint: "".to_string(), // Not yet implemented
                 })
             }
         }
@@ -447,26 +464,26 @@ impl Get {
             let out = str::from_utf8(&cmd.stdout).unwrap_or("");
             let re = Regex::new(r"(?m)VGA compatible controller:\s*(.*)$").unwrap();
             match re.captures(&out) {
-                Some(vga) => String::from(&vga[1]),
-                _ => String::from(""),
+                Some(vga) => vga[1].to_string(),
+                _ => "".to_string(),
             }
         } else {
-            String::from("")
+            "".to_string()
         }
     }
 }
 
 impl fmt::Display for PcInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut networks = String::new();
+        let mut networks = "".to_string();
         for interface in &self.network_dev {
             networks.push_str(&interface.to_string());
         }
-        let mut storage = String::new();
+        let mut storage = "".to_string();
         for store in &self.storage_dev {
             storage.push_str(&store.to_string());
         }
-        let mut vgs = String::new();
+        let mut vgs = "".to_string();
         for vg in &self.vgs {
             vgs.push_str(&vg.to_string());
         }
@@ -484,8 +501,7 @@ impl fmt::Display for PcInfo {
 │ SWAPFREE:             {}   {}  {}%
 │ NETWORK DEVICE: {}
 │ STORAGE: {}
-│ VOLUME GROUPS: {}
-",
+│ VOLUME GROUPS: {}",
             self.hostname,
             self.kernel_version,
             utils::conv_t(self.uptime),
@@ -571,7 +587,7 @@ impl fmt::Display for Partition {
 
 impl fmt::Display for VolGroup {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut lvms = String::new();
+        let mut lvms = "".to_string();
         for p in &self.lvms {
             lvms.push_str(&p.to_string());
         }
