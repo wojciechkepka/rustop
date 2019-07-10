@@ -144,7 +144,7 @@ pub struct PcInfo {
     network_dev: Vec<NetworkDevice>,
     storage_dev: Vec<Storage>,
     vgs: Vec<VolGroup>,
-    graphics_card: String,
+    // graphics_card: String,
 }
 impl PcInfo {
     pub fn new() -> PcInfo {
@@ -161,7 +161,7 @@ impl PcInfo {
             network_dev: Get::network_dev(),
             storage_dev: Get::storage_dev(),
             vgs: Get::vgs(),
-            graphics_card: Get::graphics_card(),
+            // graphics_card: Get::graphics_card(),
         }
     }
 }
@@ -418,7 +418,7 @@ impl Get {
         }
         lvms_vec
     }
-
+#[allow(dead_code)]
     fn graphics_card() -> String {
         if Command::new("lspci").output().is_ok() {
             let cmd = Command::new("lspci").output().unwrap();
@@ -456,7 +456,6 @@ impl fmt::Display for PcInfo {
 │ UPTIME:               {}
 │ CPU:                  {}
 │ CPU CLOCK:            {:.2} MHz
-│ GRAPHICS CARD:        {}
 │ MEM:                  {}  {}
 │ MEMFREE:              {}  {}  {}%
 │ SWAP:                 {}   {}
@@ -470,7 +469,7 @@ impl fmt::Display for PcInfo {
             utils::conv_t(self.uptime),
             self.cpu,
             self.cpu_clock,
-            self.graphics_card,
+            // self.graphics_card,
             utils::conv_b(self.memory),
             self.memory,
             utils::conv_b(self.free_memory),
