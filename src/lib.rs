@@ -132,6 +132,23 @@ impl LogVolume {
         }
     }
 }
+
+#[allow(dead_code)]
+#[derive(Serialize, Deserialize, Debug)]
+struct Temperature {
+    name: String,
+    temp: f32
+}
+impl Temperature {
+    #[allow(dead_code)]
+    fn new() -> Temperature {
+        Temperature {
+            name: "".to_string(),
+            temp: 0.,
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PcInfo {
     hostname: String,
@@ -471,6 +488,7 @@ impl Get {
             "".to_string()
         }
     }
+
 }
 
 impl fmt::Display for PcInfo {
