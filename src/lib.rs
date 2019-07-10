@@ -423,7 +423,7 @@ impl Get {
         if Command::new("lspci").output().is_ok() {
             let cmd = Command::new("lspci").output().unwrap();
             let out = str::from_utf8(&cmd.stdout).unwrap_or("");
-            let re = Regex::new(r"(?m)VolGroupA compatible controller:\s*(.*)$").unwrap();
+            let re = Regex::new(r"(?m)VGA compatible controller:\s*(.*)$").unwrap();
             match re.captures(&out) {
                 Some(vga) => String::from(&vga[1]),
                 _ => String::from(""),
