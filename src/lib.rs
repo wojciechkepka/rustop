@@ -6,6 +6,8 @@ use std::fs;
 use std::path::Path;
 use std::process::Command;
 use std::str;
+use std::sync::mpsc;
+use std::thread;
 
 enum SysProperty {
     CpuInfo,
@@ -144,10 +146,30 @@ pub struct PcInfo {
     network_dev: Vec<NetworkDevice>,
     storage_dev: Vec<Storage>,
     vgs: Vec<VolGroup>,
-    // graphics_card: String,
+    graphics_card: String,
 }
 impl PcInfo {
     pub fn new() -> PcInfo {
+        let (tx1, rx1) = mpsc::channel();
+        let (tx2, rx2) = mpsc::channel();
+
+        let h1 = thread::spawn(move || {
+            let vgs = Get::vgs();
+            tx1.send(vgs).unwrap();
+        });
+        let vgs = rx1.recv().unwrap();
+
+        let h2 = thread::spawn(move || {
+            let graph_card = Get::graphics_card();
+            tx2.send(graph_card).unwrap();
+        });
+        let graphics_card = rx2.recv().unwrap();
+
+        let handles = vec![h1, h2];
+        for handle in handles {
+            handle.join().unwrap();
+        }
+
         PcInfo {
             hostname: Get::sysproperty(SysProperty::Hostname),
             kernel_version: Get::sysproperty(SysProperty::OsRelease),
@@ -160,8 +182,8 @@ impl PcInfo {
             free_swap: Get::mem(Memory::SwapFree),
             network_dev: Get::network_dev(),
             storage_dev: Get::storage_dev(),
-            vgs: Get::vgs(),
-            // graphics_card: Get::graphics_card(),
+            vgs: vgs,
+            graphics_card: graphics_card,
         }
     }
 }
@@ -418,7 +440,7 @@ impl Get {
         }
         lvms_vec
     }
-#[allow(dead_code)]
+    #[allow(dead_code)]
     fn graphics_card() -> String {
         if Command::new("lspci").output().is_ok() {
             let cmd = Command::new("lspci").output().unwrap();
