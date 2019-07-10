@@ -377,8 +377,8 @@ impl Get {
                         let cmd = Command::new("vgdisplay").output().expect("err");
                         let out = str::from_utf8(&cmd.stdout).unwrap();
 
-                        let re = Regex::new(r"(?m)VolGroup Name\s*(.*)\n.*\n\s*Format\s*(.*)$(?:\n.*){3}\s*VolGroup Status\s*(.*)$").unwrap();
-                        for vg in re.captures_iter(&out) {
+                        let r = Regex::new(r"(?m)VG Name\s*(.*)\n.*\n\s*Format\s*(.*)$(?:\n.*){3}\s*VG Status\s*(.*)$").unwrap();
+                        for vg in r.captures_iter(&out) {
                             vgs_vec.push(VolGroup {
                                 name: String::from(&vg[1]),
                                 format: String::from(&vg[2]),
@@ -399,8 +399,7 @@ impl Get {
         let mut lvms_vec: Vec<LogVolume> = Vec::new();
         let cmd = Command::new("lvdisplay").output().expect("err");
         let out = str::from_utf8(&cmd.stdout).unwrap_or("");
-
-        let re = Regex::new(r"(?m)LV Path\s*(.*)\n\s*LV Name\s*(.*)$\s*VolGroup Name\s*(.*)$(?:\n.*){3}$\s*LV Status\s*(.*)(?:\n.*){7}\s*Block device\s*(\d*):(\d*)$").unwrap();
+        let re = Regex::new(r"(?m)LV Path\s*(.*)\n\s*LV Name\s*(.*)$\s*VG Name\s*(.*)$(?:\n.*){3}$\s*LV Status\s*(.*)(?:\n.*){7}\s*Block device\s*(\d*):(\d*)$").unwrap();
         for lvm in re.captures_iter(&out) {
             if &lvm[3] == vg_name {
                 let major = lvm[5].parse::<u16>().unwrap_or(0);
@@ -421,12 +420,16 @@ impl Get {
     }
 
     fn graphics_card() -> String {
-        let cmd = Command::new("lspci").output().expect("err");
-        let out = str::from_utf8(&cmd.stdout).unwrap();
-        let re = Regex::new(r"(?m)VolGroupA compatible controller:\s*(.*)$").unwrap();
-        match re.captures(&out) {
-            Some(vga) => String::from(&vga[1]),
-            _ => String::from(""),
+        if Command::new("lspci").output().is_ok() {
+            let cmd = Command::new("lspci").output().unwrap();
+            let out = str::from_utf8(&cmd.stdout).unwrap_or("");
+            let re = Regex::new(r"(?m)VolGroupA compatible controller:\s*(.*)$").unwrap();
+            match re.captures(&out) {
+                Some(vga) => String::from(&vga[1]),
+                _ => String::from(""),
+            }
+        } else {
+            String::from("")
         }
     }
 }
