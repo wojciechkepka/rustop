@@ -23,12 +23,15 @@ All important information about your system in one place.
     │ SWAPFREE:             2.87 GB   3087003648  100%
     │ NETWORK DEVICE: 
     │   ├─enp0s3──────────────────────────────────
+    │   │     ipv4:     10.92.14.100
     │   │     DOWN:     259.91 MB      272537600
     │   │     UP:       2.19 MB      2293652
     │   ├─lo──────────────────────────────────
+    │   │     ipv4:     127.0.0.1
     │   │     DOWN:     0 B      0
     │   │     UP:       0 B      0
     │   ├─docker0──────────────────────────────────
+    │   │     ipv4:     172.17.0.1
     │   │     DOWN:     0 B      0
     │   │     UP:       0 B      0
     │ STORAGE: 
