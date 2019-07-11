@@ -59,8 +59,7 @@ pub fn conv_hex_to_ip(hex_addr: &str) -> String {
         let fourth_oct = u8::from_str_radix(&hex_addr[..2], 16).unwrap_or(0);
 
         format!("{}.{}.{}.{}", first_oct, second_oct, third_oct, fourth_oct)
-    }
-    else {
+    } else {
         "".to_string()
     }
 }

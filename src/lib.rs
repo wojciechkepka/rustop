@@ -137,7 +137,7 @@ impl LogVolume {
 #[derive(Serialize, Deserialize, Debug)]
 struct Temperature {
     name: String,
-    temp: f32
+    temp: f32,
 }
 impl Temperature {
     #[allow(dead_code)]
@@ -149,7 +149,7 @@ impl Temperature {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Default)]
 pub struct PcInfo {
     hostname: String,
     kernel_version: String,
@@ -167,7 +167,6 @@ pub struct PcInfo {
 }
 impl PcInfo {
     pub fn new() -> PcInfo {
-
         PcInfo {
             hostname: Get::sysproperty(SysProperty::Hostname),
             kernel_version: Get::sysproperty(SysProperty::OsRelease),
@@ -471,53 +470,46 @@ impl Get {
         }
     }
 
-    fn ipv4_addr(interface_name: &String) -> String {
+    fn ipv4_addr(interface_name: &str) -> String {
         let mut iface_dest = "".to_string();
         let mut ip_addr = "".to_string();
         if interface_name == "lo" {
             "127.0.0.1".to_string() //Temporary till I find a way to get extract this too
-        }
-        else{
-            match fs::read_to_string("/proc/net/route") {
-                Ok(data) => {
-                    let re = Regex::new(r"(?m)^([\d\w]*)\s*([\d\w]*)").unwrap();
-                    for capture in re.captures_iter(&data) {
-                        if &capture[1] == interface_name && &capture[2] != "00000000" {
-                            iface_dest = utils::conv_hex_to_ip(&capture[2]);
-                        }
+        } else {
+            if let Ok(data) = fs::read_to_string("/proc/net/route") {
+                let re = Regex::new(r"(?m)^([\d\w]*)\s*([\d\w]*)").unwrap();
+                for capture in re.captures_iter(&data) {
+                    if &capture[1] == interface_name && &capture[2] != "00000000" {
+                        iface_dest = utils::conv_hex_to_ip(&capture[2]);
                     }
                 }
-                _ => {}
             }
 
             match fs::read_to_string("/proc/net/fib_trie") {
                 Ok(data) => {
                     let mut found = false;
-                    let file = data.split("\n").collect::<Vec<&str>>();
-                    let mut i = 0;
-                    for line in &file {
+                    let file = data.split('\n').collect::<Vec<&str>>();
+                    for (i, line) in (&file).iter().enumerate() {
                         if line.to_string().contains(&iface_dest) {
                             found = true;
-                        }
-                        else if found == true && line.to_string().contains("/32 host LOCAL") {
+                        } else if found && line.to_string().contains("/32 host LOCAL") {
                             let re = Regex::new(r"(?m)\|--\s*(.*)$").unwrap();
-                            match re.captures(&file[i-1]) {
+                            match re.captures(&file[i - 1]) {
                                 Some(n) => {
                                     ip_addr = n[1].to_string();
-                                    break
+                                    break;
                                 }
-                                _ => break
+                                _ => break,
                             }
                         }
-                        i += 1;
                     }
                     ip_addr
                 }
 
-                _ => "".to_string()
+                _ => "".to_string(),
             }
         }
-    }   
+    }
 }
 
 impl fmt::Display for PcInfo {
