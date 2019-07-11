@@ -29,6 +29,7 @@ struct NetworkDevice {
     name: String,
     received_bytes: u64,
     transfered_bytes: u64,
+    ipv4_addr: String,
 }
 impl NetworkDevice {
     fn new() -> NetworkDevice {
@@ -36,6 +37,7 @@ impl NetworkDevice {
             name: "".to_string(),
             received_bytes: 0,
             transfered_bytes: 0,
+            ipv4_addr: "".to_string(),
         }
     }
 }
@@ -315,6 +317,7 @@ impl Get {
                     interface.name = network_dev[1].to_string();
                     interface.received_bytes = received;
                     interface.transfered_bytes = transfered;
+                    interface.ipv4_addr = Get::ipv4_addr(&interface.name);
                     devices.push(interface);
                 }
                 devices
@@ -468,6 +471,48 @@ impl Get {
         }
     }
 
+    fn ipv4_addr(interface_name: &String) -> String {
+        let mut iface_dest = "".to_string();
+        let mut ip_addr = "".to_string();
+        match fs::read_to_string("/proc/net/route") {
+            Ok(data) => {
+                let re = Regex::new(r"(?m)^([\d\w]*)\s*([\d\w]*)").unwrap();
+                for capture in re.captures_iter(&data) {
+                    if &capture[1] == interface_name && &capture[2] != "00000000" {
+                        iface_dest = utils::conv_hex_to_ip(&capture[2]);
+                    }
+                }
+            }
+            _ => {}
+        }
+
+        match fs::read_to_string("/proc/net/fib_trie") {
+            Ok(data) => {
+                let mut found = false;
+                let file = data.split("\n").collect::<Vec<&str>>();
+                let mut i = 0;
+                for line in &file {
+                    if line.to_string().contains(&iface_dest) {
+                        found = true;
+                    }
+                    else if found == true && line.to_string().contains("/32 host LOCAL") {
+                        let re = Regex::new(r"(?m)\|--\s*(.*)$").unwrap();
+                        match re.captures(&file[i-1]) {
+                            Some(n) => {
+                                ip_addr = n[1].to_string();
+                                break
+                            }
+                            _ => break
+                        }
+                    }
+                    i += 1;
+                }
+                ip_addr
+            }
+
+            _ => "".to_string()
+        }
+    }   
 }
 
 impl fmt::Display for PcInfo {
@@ -527,9 +572,11 @@ impl fmt::Display for NetworkDevice {
             f,
             "
 │   ├─{}──────────────────────────────────
+│   │     ipv4:     {}
 │   │     DOWN:     {}      {}
 │   │     UP:       {}      {}",
             self.name,
+            self.ipv4_addr,
             utils::conv_b(self.received_bytes),
             self.received_bytes,
             utils::conv_b(self.transfered_bytes),
