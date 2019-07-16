@@ -90,6 +90,7 @@ struct VolGroup {
     name: String,
     format: String,
     status: String,
+    size: u64,
     lvms: Vec<LogVolume>,
 }
 
@@ -100,6 +101,7 @@ impl VolGroup {
             name: "".to_string(),
             format: "".to_string(),
             status: "".to_string(),
+            size: 0,
             lvms: vec![],
         }
     }
@@ -414,12 +416,13 @@ impl Get {
                         let cmd = Command::new("vgdisplay").output().expect("err");
                         let out = str::from_utf8(&cmd.stdout).unwrap();
 
-                        let r = Regex::new(r"(?m)VG Name\s*(.*)\n.*\n\s*Format\s*(.*)$(?:\n.*){3}\s*VG Status\s*(.*)$").unwrap();
+                        let r = Regex::new(r"(?m)VG Name\s*(.*)\n.*\n\s*Format\s*(.*)$(?:\n.*){3}\s*VG Status\s*(.*)$(?:\n.*){6}$\s*VG Size\s*(\d*)").unwrap();
                         for vg in r.captures_iter(&out) {
                             vgs_vec.push(VolGroup {
                                 name: vg[1].to_string(),
                                 format: vg[2].to_string(),
                                 status: vg[3].to_string(),
+                                size: vg[4].parse::<u64>().unwrap_or(0),
                                 lvms: Get::lvms(vg[1].to_string()),
                             })
                         }
@@ -436,17 +439,17 @@ impl Get {
         let mut lvms_vec: Vec<LogVolume> = vec![];
         let cmd = Command::new("lvdisplay").output().expect("err");
         let out = str::from_utf8(&cmd.stdout).unwrap_or("");
-        let re = Regex::new(r"(?m)LV Path\s*(.*)\n\s*LV Name\s*(.*)$\s*VG Name\s*(.*)$(?:\n.*){3}$\s*LV Status\s*(.*)(?:\n.*){7}\s*Block device\s*(\d*):(\d*)$").unwrap();
+        let re = Regex::new(r" (?m)LV Path\s*(.*)\n\s*LV Name\s*(.*)$\s*VG Name\s*(.*)$(?:\n.*){3}$\s*LV Status\s*(.*)\n.*$\n\s*LV Size\s*(\d*).*$(?:\n.*){5}\s*Block device\s*(\d*):(\d*)$").unwrap();
         for lvm in re.captures_iter(&out) {
             if lvm[3] == vg_name {
-                let major = lvm[5].parse::<u16>().unwrap_or(0);
-                let minor = lvm[6].parse::<u16>().unwrap_or(0);
+                let major = lvm[6].parse::<u16>().unwrap_or(0);
+                let minor = lvm[7].parse::<u16>().unwrap_or(0);
                 lvms_vec.push(LogVolume {
                     name: lvm[2].to_string(),
                     path: lvm[1].to_string(),
                     vg: lvm[3].to_string(),
                     status: lvm[4].to_string(),
-                    size: 0, // Not yet implemented
+                    size: lvm[5].parse::<u64>().unwrap_or(0),
                     major,
                     minor,
                     mountpoint: "".to_string(), // Not yet implemented
@@ -639,8 +642,9 @@ impl fmt::Display for VolGroup {
 │   ├─{}──────────────────────────────────
 │   │     FORMAT:        {}
 │   │     STATUS:        {}
+│   │     SIZE:          {}
 │   │     LVMS: {}",
-            self.name, self.format, self.status, lvms
+            self.name, self.format, self.status, self.size, lvms
         )
     }
 }
