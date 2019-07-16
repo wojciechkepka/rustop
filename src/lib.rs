@@ -413,7 +413,7 @@ impl Get {
                 let re = Regex::new(r"(?m)\d*\s*dm-").unwrap();
                 match re.captures(&res) {
                     Some(_n) => {
-                        let cmd = Command::new("vgdisplay").arg("--units").arg("-b").output().expect("err");
+                        let cmd = Command::new("vgdisplay").arg("--units").arg("b").output().expect("err");
                         let out = str::from_utf8(&cmd.stdout).unwrap();
 
                         let r = Regex::new(r"(?m)VG Name\s*(.*)\n.*\n\s*Format\s*(.*)$(?:\n.*){3}\s*VG Status\s*(.*)$(?:\n.*){6}$\s*VG Size\s*(\d*)").unwrap();
