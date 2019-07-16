@@ -413,7 +413,7 @@ impl Get {
                 let re = Regex::new(r"(?m)\d*\s*dm-").unwrap();
                 match re.captures(&res) {
                     Some(_n) => {
-                        let cmd = Command::new("vgdisplay").output().expect("err");
+                        let cmd = Command::new("vgdisplay").arg("--units").arg("-b").output().expect("err");
                         let out = str::from_utf8(&cmd.stdout).unwrap();
 
                         let r = Regex::new(r"(?m)VG Name\s*(.*)\n.*\n\s*Format\s*(.*)$(?:\n.*){3}\s*VG Status\s*(.*)$(?:\n.*){6}$\s*VG Size\s*(\d*)").unwrap();
@@ -437,9 +437,9 @@ impl Get {
 
     fn lvms(vg_name: String) -> Vec<LogVolume> {
         let mut lvms_vec: Vec<LogVolume> = vec![];
-        let cmd = Command::new("lvdisplay").output().expect("err");
+        let cmd = Command::new("lvdisplay").arg("--units").arg("b").output().expect("err");
         let out = str::from_utf8(&cmd.stdout).unwrap_or("");
-        let re = Regex::new(r" (?m)LV Path\s*(.*)\n\s*LV Name\s*(.*)$\s*VG Name\s*(.*)$(?:\n.*){3}$\s*LV Status\s*(.*)\n.*$\n\s*LV Size\s*(\d*).*$(?:\n.*){5}\s*Block device\s*(\d*):(\d*)$").unwrap();
+        let re = Regex::new(r"(?m)LV Path\s*(.*)\n\s*LV Name\s*(.*)$\s*VG Name\s*(.*)$(?:\n.*){3}$\s*LV Status\s*(.*)\n.*$\n\s*LV Size\s*(\d*).*$(?:\n.*){5}\s*Block device\s*(\d*):(\d*)$").unwrap();
         for lvm in re.captures_iter(&out) {
             if lvm[3] == vg_name {
                 let major = lvm[6].parse::<u16>().unwrap_or(0);
