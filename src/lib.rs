@@ -3,9 +3,11 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fs;
+use std::net::{Ipv4Addr, Ipv6Addr};
 use std::path::Path;
 use std::process::Command;
 use std::str;
+use std::str::FromStr;
 
 enum SysProperty {
     CpuInfo,
@@ -29,7 +31,8 @@ struct NetworkDevice {
     name: String,
     received_bytes: u64,
     transfered_bytes: u64,
-    ipv4_addr: String,
+    ipv4_addr: Ipv4Addr,
+    ipv6_addr: Ipv6Addr,
 }
 impl NetworkDevice {
     fn new() -> NetworkDevice {
@@ -37,7 +40,8 @@ impl NetworkDevice {
             name: "".to_string(),
             received_bytes: 0,
             transfered_bytes: 0,
-            ipv4_addr: "".to_string(),
+            ipv4_addr: Ipv4Addr::UNSPECIFIED,
+            ipv6_addr: Ipv6Addr::UNSPECIFIED,
         }
     }
 }
@@ -319,6 +323,7 @@ impl Get {
                     interface.received_bytes = received;
                     interface.transfered_bytes = transfered;
                     interface.ipv4_addr = Get::ipv4_addr(&interface.name);
+                    interface.ipv6_addr = Get::ipv6_addr(&interface.name);
                     devices.push(interface);
                 }
                 devices
@@ -413,7 +418,11 @@ impl Get {
                 let re = Regex::new(r"(?m)\d*\s*dm-").unwrap();
                 match re.captures(&res) {
                     Some(_n) => {
-                        let cmd = Command::new("vgdisplay").arg("--units").arg("b").output().expect("err");
+                        let cmd = Command::new("vgdisplay")
+                            .arg("--units")
+                            .arg("b")
+                            .output()
+                            .expect("err");
                         let out = str::from_utf8(&cmd.stdout).unwrap();
 
                         let r = Regex::new(r"(?m)VG Name\s*(.*)\n.*\n\s*Format\s*(.*)$(?:\n.*){3}\s*VG Status\s*(.*)$(?:\n.*){6}$\s*VG Size\s*(\d*)").unwrap();
@@ -437,7 +446,11 @@ impl Get {
 
     fn lvms(vg_name: String) -> Vec<LogVolume> {
         let mut lvms_vec: Vec<LogVolume> = vec![];
-        let cmd = Command::new("lvdisplay").arg("--units").arg("b").output().expect("err");
+        let cmd = Command::new("lvdisplay")
+            .arg("--units")
+            .arg("b")
+            .output()
+            .expect("err");
         let out = str::from_utf8(&cmd.stdout).unwrap_or("");
         let re = Regex::new(r"(?m)LV Path\s*(.*)\n\s*LV Name\s*(.*)$\s*VG Name\s*(.*)$(?:\n.*){3}$\s*LV Status\s*(.*)\n.*$\n\s*LV Size\s*(\d*).*$(?:\n.*){5}\s*Block device\s*(\d*):(\d*)$").unwrap();
         for lvm in re.captures_iter(&out) {
@@ -473,11 +486,11 @@ impl Get {
         }
     }
 
-    fn ipv4_addr(interface_name: &str) -> String {
+    fn ipv4_addr(interface_name: &str) -> Ipv4Addr {
         let mut iface_dest = "".to_string();
-        let mut ip_addr = "".to_string();
+        let mut ip_addr = Ipv4Addr::UNSPECIFIED;
         if interface_name == "lo" {
-            "127.0.0.1".to_string() //Temporary till I find a way to get extract this too
+            Ipv4Addr::LOCALHOST //Temporary till I find a way to get extract this too
         } else {
             if let Ok(data) = fs::read_to_string("/proc/net/route") {
                 let re = Regex::new(r"(?m)^([\d\w]*)\s*([\d\w]*)").unwrap();
@@ -499,7 +512,7 @@ impl Get {
                             let re = Regex::new(r"(?m)\|--\s*(.*)$").unwrap();
                             match re.captures(&file[i - 1]) {
                                 Some(n) => {
-                                    ip_addr = n[1].to_string();
+                                    ip_addr = Ipv4Addr::from_str(&n[1]).unwrap();
                                     break;
                                 }
                                 _ => break,
@@ -509,7 +522,38 @@ impl Get {
                     ip_addr
                 }
 
-                _ => "".to_string(),
+                _ => Ipv4Addr::UNSPECIFIED,
+            }
+        }
+    }
+
+    fn ipv6_addr(interface_name: &str) -> Ipv6Addr {
+        let mut ip_addr = Ipv6Addr::UNSPECIFIED;
+        if interface_name == "lo" {
+            Ipv6Addr::LOCALHOST //Temporary till I find a way to get extract this too
+        } else {
+            match fs::read_to_string("/proc/net/if_inet6") {
+                Ok(data) => {
+                    let re = Regex::new(r"(?m)^([\d\w]*)\s\d*\s\d*\s\d*\s\d*\s*(.*)$").unwrap();
+                    for capture in re.captures_iter(&data) {
+                        if &capture[2] == interface_name {
+                            let ip = format!(
+                                "{}:{}:{}:{}:{}:{}:{}:{}",
+                                &capture[1][..4],
+                                &capture[1][4..8],
+                                &capture[1][8..12],
+                                &capture[1][12..16],
+                                &capture[1][16..20],
+                                &capture[1][20..24],
+                                &capture[1][24..28],
+                                &capture[1][28..32]
+                            );
+                            ip_addr = Ipv6Addr::from_str(&ip).unwrap();
+                        }
+                    }
+                    ip_addr
+                }
+                _ => Ipv6Addr::UNSPECIFIED,
             }
         }
     }
@@ -540,8 +584,8 @@ impl fmt::Display for PcInfo {
 │ GRAPHICS CARD:        {}
 │ MEM:                  {}  {}
 │ MEMFREE:              {}  {}  {}%
-│ SWAP:                 {}   {}
-│ SWAPFREE:             {}   {}  {}%
+│ SWAP:                 {}  {}
+│ SWAPFREE:             {}  {}  {}%
 │ NETWORK DEVICE: {}
 │ STORAGE: {}
 │ VOLUME GROUPS: {}",
@@ -573,11 +617,13 @@ impl fmt::Display for NetworkDevice {
             f,
             "
 │   ├─{}──────────────────────────────────
-│   │     ipv4:     {}
+│   │     Ipv4:     {}
+│   │     Ipv6:     {}
 │   │     DOWN:     {}      {}
 │   │     UP:       {}      {}",
             self.name,
             self.ipv4_addr,
+            self.ipv6_addr,
             utils::conv_b(self.received_bytes),
             self.received_bytes,
             utils::conv_b(self.transfered_bytes),
