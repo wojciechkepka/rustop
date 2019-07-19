@@ -601,7 +601,7 @@ impl Get {
                 let mut tmp = Temperature::new();
                 match fs::read_to_string(dev_path.join(format!("temp{}_label", i))) {
                     Ok(label) => tmp.name = label.trim().to_string(),
-                    Err(_e) => tmp.name = "".to_string(),
+                    Err(_e) => tmp.name = format!("temp{}", i),
                 }
                 match fs::read_to_string(dev_path.join(format!("temp{}_input", i))) {
                     Ok(temp) => {
