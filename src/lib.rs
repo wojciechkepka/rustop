@@ -18,6 +18,7 @@ enum SysProperty {
     NetDev,
     StorDev,
     StorMounts,
+    Temperature,
 }
 enum Memory {
     SwapTotal,
@@ -139,7 +140,6 @@ impl LogVolume {
     }
 }
 
-#[allow(dead_code)]
 #[derive(Serialize, Deserialize, Debug)]
 struct Temperature {
     name: String,
@@ -151,6 +151,21 @@ impl Temperature {
         Temperature {
             name: "".to_string(),
             temp: 0.,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct DeviceTemperatures {
+    name: String,
+    temps: Vec<Temperature>,
+}
+impl DeviceTemperatures {
+    #[allow(dead_code)]
+    fn new() -> DeviceTemperatures {
+        DeviceTemperatures {
+            name: "".to_string(),
+            temps: vec![],
         }
     }
 }
@@ -170,6 +185,7 @@ pub struct PcInfo {
     storage_dev: Vec<Storage>,
     vgs: Vec<VolGroup>,
     graphics_card: String,
+    temps: Vec<DeviceTemperatures>,
 }
 impl PcInfo {
     pub fn new() -> PcInfo {
@@ -187,6 +203,7 @@ impl PcInfo {
             storage_dev: Get::storage_dev(),
             vgs: Get::vgs(),
             graphics_card: Get::graphics_card(),
+            temps: Get::temperatures(),
         }
     }
     pub fn default() -> PcInfo {
@@ -204,6 +221,7 @@ impl PcInfo {
             storage_dev: vec![],
             vgs: vec![],
             graphics_card: "".to_string(),
+            temps: vec![],
         }
     }
 }
@@ -221,6 +239,7 @@ impl Get {
             SysProperty::StorDev => &Path::new("/proc/partitions"),
             SysProperty::StorMounts => &Path::new("/proc/mounts"),
             SysProperty::CpuInfo => &Path::new("/proc/cpuinfo"),
+            SysProperty::Temperature => &Path::new("/sys/class/hwmon"),
         }
     }
 
@@ -557,6 +576,47 @@ impl Get {
             }
         }
     }
+
+    fn temperatures() -> Vec<DeviceTemperatures> {
+        let paths = fs::read_dir(Get::path(SysProperty::Temperature)).unwrap();
+        let mut devices: Vec<DeviceTemperatures> = vec![];
+        for path in paths {
+            let dev_path = path.unwrap().path();
+            let mut dev = DeviceTemperatures::new();
+            let mut dev_temps: Vec<Temperature> = vec![];
+            match fs::read_to_string(dev_path.join("name")) {
+                Ok(n) => dev.name = n.trim().to_string(),
+                Err(_e) => dev.name = "NULL".to_string(),
+            }
+            let temperature_files = fs::read_dir(&dev_path).unwrap();
+            let mut count_sensors = 0;
+            for file in temperature_files {
+                let filename = file.unwrap().file_name().into_string().unwrap();
+                let re = Regex::new(r"temp[\d]+_input").unwrap();
+                if re.is_match(&filename) {
+                    count_sensors += 1;
+                }
+            }
+            for i in 1..=count_sensors {
+                let mut tmp = Temperature::new();
+                match fs::read_to_string(dev_path.join(format!("temp{}_label", i))) {
+                    Ok(label) => tmp.name = label.trim().to_string(),
+                    Err(_e) => tmp.name = "".to_string(),
+                }
+                match fs::read_to_string(dev_path.join(format!("temp{}_input", i))) {
+                    Ok(temp) => {
+                        let t = temp.trim().parse::<f32>().unwrap();
+                        tmp.temp = t / 1000.;
+                    }
+                    Err(_e) => tmp.temp = 0.,
+                }
+                dev_temps.push(tmp);
+            }
+            dev.temps = dev_temps;
+            devices.push(dev);
+        }
+        devices
+    }
 }
 
 impl fmt::Display for PcInfo {
@@ -573,6 +633,10 @@ impl fmt::Display for PcInfo {
         for vg in &self.vgs {
             vgs.push_str(&vg.to_string());
         }
+        let mut dev_temps = "".to_string();
+        for dev in &self.temps {
+            dev_temps.push_str(&dev.to_string());
+        }
         write!(
             f,
             "┌──────────────────────────────────
@@ -587,6 +651,7 @@ impl fmt::Display for PcInfo {
 │ SWAP:                 {}  {}
 │ SWAPFREE:             {}  {}  {}%
 │ NETWORK DEVICE: {}
+│ TEMPERATURES: {}
 │ STORAGE: {}
 │ VOLUME GROUPS: {}",
             self.hostname,
@@ -606,6 +671,7 @@ impl fmt::Display for PcInfo {
             self.free_swap,
             utils::conv_p(self.swap, self.free_swap),
             networks,
+            dev_temps,
             storage,
             vgs
         )
@@ -713,6 +779,32 @@ impl fmt::Display for LogVolume {
             self.path,
             self.status,
             self.mountpoint
+        )
+    }
+}
+
+impl fmt::Display for DeviceTemperatures {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut temps = "".to_string();
+        for temp in &self.temps {
+            temps.push_str(&temp.to_string());
+        }
+        write!(
+            f,
+            "
+│   ├─{}──────────────────────────────────
+│   │     SENSORS: {}",
+            self.name, temps
+        )
+    }
+}
+impl fmt::Display for Temperature {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "
+│   │         ├─{} {}°C",
+            self.name, self.temp
         )
     }
 }
