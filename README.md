@@ -13,9 +13,10 @@ USAGE:
     rustop [FLAGS] [OPTIONS] [SUBCOMMAND]
 
 FLAGS:
-    -h, --help       Prints help information
-    -j, --json       Prints output in JSON format
-    -V, --version    Prints version information
+    -h, --help          Prints help information
+    -j, --json          Prints output in JSON format
+    -p, --prettyjson    Prints output in pretty printed JSON format   
+    -V, --version       Prints version information
 
 OPTIONS:
     -f, --file <FILE>    Prints output to the specified file
