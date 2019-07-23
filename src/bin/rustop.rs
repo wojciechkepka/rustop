@@ -105,8 +105,8 @@ fn main() {
         let p = PcInfo::new();
         if args.is_present("json") {
             println!("{}", serde_json::to_string(&p).unwrap());
-        } else if args.is_present("prettyjson"){
-            println!("{}", serde_json::to_string_pretty(&p).unwrap());            
+        } else if args.is_present("prettyjson") {
+            println!("{}", serde_json::to_string_pretty(&p).unwrap());
         } else {
             println!("{}", p.to_string());
         }

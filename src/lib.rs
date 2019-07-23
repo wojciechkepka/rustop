@@ -1,4 +1,5 @@
 mod utils;
+use colored::*;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -8,7 +9,6 @@ use std::path::Path;
 use std::process::Command;
 use std::str;
 use std::str::FromStr;
-use colored::*;
 
 pub enum SysProperty {
     CpuInfo,
@@ -665,7 +665,9 @@ impl fmt::Display for PcInfo {
             self.memory.to_string().bold(),
             utils::conv_b(self.free_memory).bold(),
             self.free_memory.to_string().bold(),
-            utils::conv_p(self.memory, self.free_memory).to_string().bold(),
+            utils::conv_p(self.memory, self.free_memory)
+                .to_string()
+                .bold(),
             utils::conv_b(self.swap).bold(),
             self.swap.to_string().bold(),
             utils::conv_b(self.free_swap).bold(),
@@ -757,7 +759,11 @@ impl fmt::Display for VolGroup {
 │   │     STATUS:        {}
 │   │     SIZE:          {}
 │   │     LVMS: {}",
-            self.name.red().bold(), self.format, self.status, self.size, lvms
+            self.name.red().bold(),
+            self.format,
+            self.status,
+            self.size,
+            lvms
         )
     }
 }
@@ -795,7 +801,8 @@ impl fmt::Display for DeviceTemperatures {
             "
 │   ├─{}──────────────────────────────────
 │   │     SENSORS: {}",
-            self.name.red().bold(), temps
+            self.name.red().bold(),
+            temps
         )
     }
 }
@@ -805,7 +812,8 @@ impl fmt::Display for Temperature {
             f,
             "
 │   │         ├─{} {}°C",
-            self.name.green().bold(), self.temp
+            self.name.green().bold(),
+            self.temp
         )
     }
 }
