@@ -9,7 +9,7 @@ use std::process::Command;
 use std::str;
 use std::str::FromStr;
 
-enum SysProperty {
+pub enum SysProperty {
     CpuInfo,
     Hostname,
     OsRelease,
@@ -20,7 +20,7 @@ enum SysProperty {
     StorMounts,
     Temperature,
 }
-enum Memory {
+pub enum Memory {
     SwapTotal,
     SwapFree,
     MemTotal,
@@ -28,7 +28,7 @@ enum Memory {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct NetworkDevice {
+pub struct NetworkDevice {
     name: String,
     received_bytes: u64,
     transfered_bytes: u64,
@@ -48,7 +48,7 @@ impl NetworkDevice {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct Storage {
+pub struct Storage {
     name: String,
     major: u16,
     minor: u16,
@@ -68,7 +68,7 @@ impl Storage {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct Partition {
+pub struct Partition {
     name: String,
     major: u16,
     minor: u16,
@@ -91,7 +91,7 @@ impl Partition {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct VolGroup {
+pub struct VolGroup {
     name: String,
     format: String,
     status: String,
@@ -113,7 +113,7 @@ impl VolGroup {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct LogVolume {
+pub struct LogVolume {
     name: String,
     vg: String,
     path: String,
@@ -141,7 +141,7 @@ impl LogVolume {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct Temperature {
+pub struct Temperature {
     name: String,
     temp: f32,
 }
@@ -156,7 +156,7 @@ impl Temperature {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct DeviceTemperatures {
+pub struct DeviceTemperatures {
     name: String,
     temps: Vec<Temperature>,
 }
@@ -227,7 +227,7 @@ impl PcInfo {
 }
 
 #[derive(Debug)]
-struct Get;
+pub struct Get;
 impl Get {
     fn path(prop: SysProperty) -> &'static Path {
         match prop {
@@ -243,7 +243,7 @@ impl Get {
         }
     }
 
-    fn sysproperty(property: SysProperty) -> String {
+    pub fn sysproperty(property: SysProperty) -> String {
         let path = match property {
             SysProperty::OsRelease => Get::path(SysProperty::OsRelease),
             SysProperty::Hostname => Get::path(SysProperty::Hostname),
@@ -252,7 +252,7 @@ impl Get {
         String::from(fs::read_to_string(path).unwrap().trim_end())
     }
 
-    fn uptime() -> f64 {
+    pub fn uptime() -> f64 {
         match fs::read_to_string(Get::path(SysProperty::Uptime)) {
             Ok(res) => {
                 let data: Vec<&str> = res.split(' ').collect();
@@ -262,7 +262,7 @@ impl Get {
         }
     }
 
-    fn cpu_info() -> String {
+    pub fn cpu_info() -> String {
         match fs::read_to_string(Get::path(SysProperty::CpuInfo)) {
             Ok(res) => {
                 let re = Regex::new(r"model name\s*: (.*)").unwrap();
@@ -278,7 +278,7 @@ impl Get {
         }
     }
 
-    fn mem(target: Memory) -> u64 {
+    pub fn mem(target: Memory) -> u64 {
         match fs::read_to_string(Get::path(SysProperty::Mem)) {
             Ok(res) => {
                 let re = match target {
@@ -302,7 +302,7 @@ impl Get {
         }
     }
 
-    fn cpu_clock() -> f32 {
+    pub fn cpu_clock() -> f32 {
         match fs::read_to_string(Get::path(SysProperty::CpuInfo)) {
             Ok(res) => {
                 let re = Regex::new(r"cpu MHz\s*: (.*)").unwrap();
@@ -326,7 +326,7 @@ impl Get {
         }
     }
 
-    fn network_dev() -> Vec<NetworkDevice> {
+    pub fn network_dev() -> Vec<NetworkDevice> {
         let mut devices = vec![];
         match fs::read_to_string(Get::path(SysProperty::NetDev)) {
             Ok(res) => {
@@ -354,7 +354,7 @@ impl Get {
         }
     }
 
-    fn storage_dev() -> Vec<Storage> {
+    pub fn storage_dev() -> Vec<Storage> {
         let mut devices = vec![];
         match fs::read_to_string(Get::path(SysProperty::StorDev)) {
             Ok(res) => {
@@ -430,7 +430,7 @@ impl Get {
         }
     }
 
-    fn vgs() -> Vec<VolGroup> {
+    pub fn vgs() -> Vec<VolGroup> {
         let mut vgs_vec: Vec<VolGroup> = vec![];
         match fs::read_to_string(Get::path(SysProperty::StorDev)) {
             Ok(res) => {
@@ -490,8 +490,8 @@ impl Get {
         }
         lvms_vec
     }
-    #[allow(dead_code)]
-    fn graphics_card() -> String {
+
+    pub fn graphics_card() -> String {
         if Command::new("lspci").output().is_ok() {
             let cmd = Command::new("lspci").output().unwrap();
             let out = str::from_utf8(&cmd.stdout).unwrap_or("");
@@ -509,7 +509,7 @@ impl Get {
         let mut iface_dest = "".to_string();
         let mut ip_addr = Ipv4Addr::UNSPECIFIED;
         if interface_name == "lo" {
-            Ipv4Addr::LOCALHOST //Temporary till I find a way to get extract this too
+            Ipv4Addr::LOCALHOST
         } else {
             if let Ok(data) = fs::read_to_string("/proc/net/route") {
                 let re = Regex::new(r"(?m)^([\d\w]*)\s*([\d\w]*)").unwrap();
@@ -577,7 +577,7 @@ impl Get {
         }
     }
 
-    fn temperatures() -> Vec<DeviceTemperatures> {
+    pub fn temperatures() -> Vec<DeviceTemperatures> {
         let paths = fs::read_dir(Get::path(SysProperty::Temperature)).unwrap();
         let mut devices: Vec<DeviceTemperatures> = vec![];
         for path in paths {
