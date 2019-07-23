@@ -8,6 +8,7 @@ use std::path::Path;
 use std::process::Command;
 use std::str;
 use std::str::FromStr;
+use colored::*;
 
 pub enum SysProperty {
     CpuInfo,
@@ -654,22 +655,22 @@ impl fmt::Display for PcInfo {
 │ TEMPERATURES: {}
 │ STORAGE: {}
 │ VOLUME GROUPS: {}",
-            self.hostname,
-            self.kernel_version,
-            utils::conv_t(self.uptime),
-            self.cpu,
+            self.hostname.bold().red(),
+            self.kernel_version.bold(),
+            utils::conv_t(self.uptime).bold(),
+            self.cpu.bold(),
             self.cpu_clock,
-            self.graphics_card,
-            utils::conv_b(self.memory),
-            self.memory,
-            utils::conv_b(self.free_memory),
-            self.free_memory,
-            utils::conv_p(self.memory, self.free_memory),
-            utils::conv_b(self.swap),
-            self.swap,
-            utils::conv_b(self.free_swap),
-            self.free_swap,
-            utils::conv_p(self.swap, self.free_swap),
+            self.graphics_card.bold(),
+            utils::conv_b(self.memory).bold(),
+            self.memory.to_string().bold(),
+            utils::conv_b(self.free_memory).bold(),
+            self.free_memory.to_string().bold(),
+            utils::conv_p(self.memory, self.free_memory).to_string().bold(),
+            utils::conv_b(self.swap).bold(),
+            self.swap.to_string().bold(),
+            utils::conv_b(self.free_swap).bold(),
+            self.free_swap.to_string().bold(),
+            utils::conv_p(self.swap, self.free_swap).to_string().bold(),
             networks,
             dev_temps,
             storage,
@@ -687,7 +688,7 @@ impl fmt::Display for NetworkDevice {
 │   │     Ipv6:     {}
 │   │     DOWN:     {}      {}
 │   │     UP:       {}      {}",
-            self.name,
+            self.name.cyan().bold(),
             self.ipv4_addr,
             self.ipv6_addr,
             utils::conv_b(self.received_bytes),
@@ -711,7 +712,7 @@ impl fmt::Display for Storage {
 │   │     MAJ:MIN:     {}:{}
 │   │     SIZE:        {}    {}
 │   │     PARTITIONS: {}",
-            self.name,
+            self.name.red().bold(),
             self.major,
             self.minor,
             utils::conv_b(self.size),
@@ -731,7 +732,7 @@ impl fmt::Display for Partition {
 │   │         │     SIZE:        {}    {}
 │   │         │     FILESYSTEM:  {}
 │   │         │     MOUNTPOINT:  {}",
-            self.name,
+            self.name.blue().bold(),
             self.major,
             self.minor,
             utils::conv_b(self.size),
@@ -756,7 +757,7 @@ impl fmt::Display for VolGroup {
 │   │     STATUS:        {}
 │   │     SIZE:          {}
 │   │     LVMS: {}",
-            self.name, self.format, self.status, self.size, lvms
+            self.name.red().bold(), self.format, self.status, self.size, lvms
         )
     }
 }
@@ -771,7 +772,7 @@ impl fmt::Display for LogVolume {
 │   │         │     PATH:  {}
 │   │         │     STATUS:  {}
 │   │         │     MOUNTPOINT:  {}",
-            self.name,
+            self.name.blue().bold(),
             self.major,
             self.minor,
             utils::conv_b(self.size),
@@ -794,7 +795,7 @@ impl fmt::Display for DeviceTemperatures {
             "
 │   ├─{}──────────────────────────────────
 │   │     SENSORS: {}",
-            self.name, temps
+            self.name.red().bold(), temps
         )
     }
 }
@@ -804,7 +805,7 @@ impl fmt::Display for Temperature {
             f,
             "
 │   │         ├─{} {}°C",
-            self.name, self.temp
+            self.name.green().bold(), self.temp
         )
     }
 }
