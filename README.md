@@ -24,6 +24,32 @@ SUBCOMMANDS:
     get     gets specified info
     help    Prints this message or the help of the given subcommand(s)
 ```
+### Get
+```
+USAGE:
+    rustop get <info>
+
+FLAGS:
+    -h, --help       Prints help information
+    -V, --version    Prints version information
+
+ARGS:
+    <info>    Available options:
+               - hostname
+               - kernel
+               - uptime
+               - cpu
+               - cpuclock
+               - memory
+               - fmemory
+               - swap
+               - fswap
+               - network
+               - storage
+               - vgs
+               - graphics
+               - temperatures
+```
 ## Example output
 ```
 ┌──────────────────────────────────
