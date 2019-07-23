@@ -21,6 +21,12 @@ fn main() {
                 .long("json")
                 .help("Prints output in JSON format"),
         )
+        .arg(
+            Arg::with_name("prettyjson")
+                .short("p")
+                .long("prettyjson")
+                .help("Prints output in pretty printed JSON format"),
+        )
         .subcommand(
             SubCommand::with_name("get")
                 .about("gets specified info")
@@ -99,6 +105,8 @@ fn main() {
         let p = PcInfo::new();
         if args.is_present("json") {
             println!("{}", serde_json::to_string(&p).unwrap());
+        } else if args.is_present("prettyjson"){
+            println!("{}", serde_json::to_string_pretty(&p).unwrap());            
         } else {
             println!("{}", p.to_string());
         }
