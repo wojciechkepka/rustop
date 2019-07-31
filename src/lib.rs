@@ -171,7 +171,7 @@ impl DeviceTemperatures {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct PcInfo {
     hostname: String,
     kernel_version: String,
@@ -207,7 +207,9 @@ impl PcInfo {
             temps: Get::temperatures(),
         }
     }
-    pub fn default() -> PcInfo {
+}
+impl Default for PcInfo {
+    fn default() -> PcInfo {
         PcInfo {
             hostname: "".to_string(),
             kernel_version: "".to_string(),
