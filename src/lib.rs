@@ -147,7 +147,6 @@ pub struct Temperature {
     temp: f32,
 }
 impl Temperature {
-    #[allow(dead_code)]
     fn new() -> Temperature {
         Temperature {
             name: "".to_string(),
@@ -170,6 +169,72 @@ impl DeviceTemperatures {
         }
     }
 }
+
+#[allow(dead_code)]
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Process {
+    name: String,
+    uid: u32,
+    gid: u32,
+    command: String,
+    pid: u32,
+    ppid: u32,
+    virt: u64,
+    res: u64,
+    state: String, 
+}
+impl Process {
+    pub fn new() -> Process {
+        Process {
+            name: "".to_string(),
+            uid: 0,
+            gid: 0,
+            command: "".to_string(),
+            pid: 0,
+            ppid: 0,
+            virt: 0,
+            res: 0,
+            state: "".to_string(),
+        }
+    }
+    pub fn from_pid(pid: u32) -> Process {
+        match fs::read_to_string(Path::new(&format!("/proc/{}/status", pid))) {
+            Ok(p_status) => {
+                let re = Regex::new(r"(?m)^Name:\s*(.*)$\n.*$\nState:\s*(.*)(?:\n.*$){2}\nPid:\s*(\d*)$\nPPid:\s*(\d*)$\n.*$\nUid:\s*(\d*).*$\nGid:\s*(\d*).*$(?:\n.*$){7}\nVmSize:\s*(\d*).*$(?:\n.*$){4}\nRssAnon:\s*(\d*).*$\nRssFile:\s*(\d*).*$\nRssShmem:\s*(\d*)").unwrap();
+                let mut p = Process::new();
+                match re.captures(&p_status) {
+                    Some(data) => {
+                        p.name = data[1].to_string();
+                        p.state = data[2].to_string();
+                        p.pid = data[3].parse::<u32>().unwrap_or(0);
+                        p.ppid = data[4].parse::<u32>().unwrap_or(0);
+                        p.uid = data[5].parse::<u32>().unwrap_or(0);
+                        p.gid = data[6].parse::<u32>().unwrap_or(0);
+                        p.virt = data[7].parse::<u64>().unwrap_or(0);
+                        p.res = data[8].parse::<u64>().unwrap_or(0) + data[9].parse::<u64>().unwrap_or(0) + data[10].parse::<u64>().unwrap_or(0);
+                        p.command = Process::command(p.pid);
+                    }
+                    _ => {}
+                }
+                p
+            }
+            Err(e) => {
+                println!("Failed to retrieve process status - {}", e);
+                Process::new()
+            }
+        }
+    }
+    fn command(pid: u32) -> String {
+        match fs::read_to_string(Path::new(&format!("/proc/{}/comm", pid))) {
+            Ok(command) => command.trim().to_string(),
+            Err(e) => {
+                println!("Failed to retrieve process command - {}", e);
+                "".to_string()
+            }
+        }
+    }
+}
+
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PcInfo {
