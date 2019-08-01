@@ -181,7 +181,7 @@ pub struct Process {
     ppid: u32,
     virt: u64,
     res: u64,
-    state: String, 
+    state: String,
 }
 impl Process {
     pub fn new() -> Process {
@@ -202,19 +202,18 @@ impl Process {
             Ok(p_status) => {
                 let re = Regex::new(r"(?m)^Name:\s*(.*)$\n.*$\nState:\s*(.*)(?:\n.*$){2}\nPid:\s*(\d*)$\nPPid:\s*(\d*)$\n.*$\nUid:\s*(\d*).*$\nGid:\s*(\d*).*$(?:\n.*$){7}\nVmSize:\s*(\d*).*$(?:\n.*$){4}\nRssAnon:\s*(\d*).*$\nRssFile:\s*(\d*).*$\nRssShmem:\s*(\d*)").unwrap();
                 let mut p = Process::new();
-                match re.captures(&p_status) {
-                    Some(data) => {
-                        p.name = data[1].to_string();
-                        p.state = data[2].to_string();
-                        p.pid = data[3].parse::<u32>().unwrap_or(0);
-                        p.ppid = data[4].parse::<u32>().unwrap_or(0);
-                        p.uid = data[5].parse::<u32>().unwrap_or(0);
-                        p.gid = data[6].parse::<u32>().unwrap_or(0);
-                        p.virt = data[7].parse::<u64>().unwrap_or(0);
-                        p.res = data[8].parse::<u64>().unwrap_or(0) + data[9].parse::<u64>().unwrap_or(0) + data[10].parse::<u64>().unwrap_or(0);
-                        p.command = Process::command(p.pid);
-                    }
-                    _ => {}
+                if let Some(data) = re.captures(&p_status) {
+                    p.name = data[1].to_string();
+                    p.state = data[2].to_string();
+                    p.pid = data[3].parse::<u32>().unwrap_or(0);
+                    p.ppid = data[4].parse::<u32>().unwrap_or(0);
+                    p.uid = data[5].parse::<u32>().unwrap_or(0);
+                    p.gid = data[6].parse::<u32>().unwrap_or(0);
+                    p.virt = data[7].parse::<u64>().unwrap_or(0);
+                    p.res = data[8].parse::<u64>().unwrap_or(0)
+                        + data[9].parse::<u64>().unwrap_or(0)
+                        + data[10].parse::<u64>().unwrap_or(0);
+                    p.command = Process::command(p.pid);
                 }
                 p
             }
@@ -235,8 +234,7 @@ impl Process {
     }
 }
 
-
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Default)]
 pub struct PcInfo {
     hostname: String,
     kernel_version: String,
@@ -270,26 +268,6 @@ impl PcInfo {
             vgs: Get::vgs(),
             graphics_card: Get::graphics_card(),
             temps: Get::temperatures(),
-        }
-    }
-}
-impl Default for PcInfo {
-    fn default() -> PcInfo {
-        PcInfo {
-            hostname: "".to_string(),
-            kernel_version: "".to_string(),
-            uptime: 0.,
-            cpu: "".to_string(),
-            cpu_clock: 0.,
-            memory: 0,
-            free_memory: 0,
-            swap: 0,
-            free_swap: 0,
-            network_dev: vec![],
-            storage_dev: vec![],
-            vgs: vec![],
-            graphics_card: "".to_string(),
-            temps: vec![],
         }
     }
 }
@@ -684,6 +662,46 @@ impl Get {
             devices.push(dev);
         }
         devices
+    }
+    pub fn pids() -> Vec<u32> {
+        let paths = fs::read_dir("/proc/").unwrap();
+        let mut pids = vec![];
+        for path in paths {
+            let filename = path
+                .unwrap()
+                .file_name()
+                .into_string()
+                .unwrap()
+                .parse::<u32>();
+            match filename {
+                Ok(process) => pids.push(process),
+                _ => {}
+            }
+        }
+
+        pids
+    }
+    pub fn username_from_uid(uid: u32) -> String {
+        if Command::new("getent")
+            .arg("passwd")
+            .arg(format!("{}", uid))
+            .output()
+            .is_ok()
+        {
+            let cmd = Command::new("getent")
+                .arg("passwd")
+                .arg(format!("{}", uid))
+                .output()
+                .unwrap();
+            let out = str::from_utf8(&cmd.stdout).unwrap_or("");
+            let re = Regex::new(r"([\w\d]*):").unwrap();
+            match re.captures(&out) {
+                Some(username) => username[1].to_string(),
+                _ => "".to_string(),
+            }
+        } else {
+            "".to_string()
+        }
     }
 }
 
