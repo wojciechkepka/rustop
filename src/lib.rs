@@ -25,7 +25,7 @@ pub enum Memory {
     SwapTotal,
     SwapFree,
     MemTotal,
-    MemFree,
+    MemAvailable,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -242,7 +242,7 @@ pub struct PcInfo {
     cpu: String,
     cpu_clock: f32,
     memory: u64,
-    free_memory: u64,
+    available_memory: u64,
     swap: u64,
     free_swap: u64,
     network_dev: Vec<NetworkDevice>,
@@ -260,7 +260,7 @@ impl PcInfo {
             cpu: Get::cpu_info(),
             cpu_clock: Get::cpu_clock(),
             memory: Get::mem(Memory::MemTotal),
-            free_memory: Get::mem(Memory::MemFree),
+            available_memory: Get::mem(Memory::MemAvailable),
             swap: Get::mem(Memory::SwapTotal),
             free_swap: Get::mem(Memory::SwapFree),
             network_dev: Get::network_dev(),
@@ -331,7 +331,7 @@ impl Get {
                     Memory::SwapFree => Regex::new(r"SwapFree:\s*(\d*)").unwrap(),
                     Memory::SwapTotal => Regex::new(r"SwapTotal:\s*(\d*)").unwrap(),
                     Memory::MemTotal => Regex::new(r"MemTotal:\s*(\d*)").unwrap(),
-                    Memory::MemFree => Regex::new(r"MemFree:\s*(\d*)").unwrap(),
+                    Memory::MemAvailable => Regex::new(r"MemAvailable:\s*(\d*)").unwrap(),
                 };
                 match re.captures(&res) {
                     Some(data) => match data[1].parse::<u64>() {
@@ -748,9 +748,9 @@ impl fmt::Display for PcInfo {
             self.graphics_card.bold(),
             utils::conv_b(self.memory).bold(),
             self.memory.to_string().bold(),
-            utils::conv_b(self.free_memory).bold(),
-            self.free_memory.to_string().bold(),
-            utils::conv_p(self.memory, self.free_memory)
+            utils::conv_b(self.available_memory).bold(),
+            self.available_memory.to_string().bold(),
+            utils::conv_p(self.memory, self.available_memory)
                 .to_string()
                 .bold(),
             utils::conv_b(self.swap).bold(),

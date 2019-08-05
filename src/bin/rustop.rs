@@ -82,7 +82,7 @@ fn main() {
             "cpu" => println!("{}", Get::cpu_info()),
             "cpuclock" => println!("{}", Get::cpu_clock()),
             "memory" => println!("{}", Get::mem(Memory::MemTotal)),
-            "fmemory" => println!("{}", Get::mem(Memory::MemFree)),
+            "fmemory" => println!("{}", Get::mem(Memory::MemAvailable)),
             "swap" => println!("{}", Get::mem(Memory::SwapTotal)),
             "fswap" => println!("{}", Get::mem(Memory::SwapFree)),
             "network" => println!(
