@@ -5,7 +5,7 @@ use std::fs;
 
 fn main() {
     let args = App::new("rustop")
-        .version("0.4.1")
+        .version("0.4.2")
         .about("Gathers all important information about your system")
         .arg(
             Arg::with_name("file")
@@ -26,6 +26,12 @@ fn main() {
                 .short("p")
                 .long("prettyjson")
                 .help("Prints output in pretty printed JSON format"),
+        )
+        .arg(
+            Arg::with_name("yaml")
+                .short("y")
+                .long("yaml")
+                .help("Prints output in YAML format"),
         )
         .subcommand(
             SubCommand::with_name("get")
@@ -107,6 +113,8 @@ fn main() {
             println!("{}", serde_json::to_string(&p).unwrap());
         } else if args.is_present("prettyjson") {
             println!("{}", serde_json::to_string_pretty(&p).unwrap());
+        } else if args.is_present("yaml") {
+            println!("{}", serde_yaml::to_string(&p).unwrap());
         } else {
             println!("{}", p.to_string());
         }
