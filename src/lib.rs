@@ -1,5 +1,6 @@
 mod utils;
 use colored::*;
+use glob::glob;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -19,6 +20,7 @@ pub enum SysProperty {
     NetDev,
     StorDev,
     StorMounts,
+    SysBlockDev,
     Temperature,
 }
 pub enum Memory {
@@ -241,6 +243,7 @@ impl Get {
             SysProperty::NetDev => &Path::new("/proc/net/dev"),
             SysProperty::StorDev => &Path::new("/proc/partitions"),
             SysProperty::StorMounts => &Path::new("/proc/mounts"),
+            SysProperty::SysBlockDev => &Path::new("/sys/block/*"),
             SysProperty::CpuInfo => &Path::new("/proc/cpuinfo"),
             SysProperty::Temperature => &Path::new("/sys/class/hwmon"),
         }
@@ -359,21 +362,32 @@ impl Get {
 
     pub fn storage_dev() -> Vec<Storage> {
         let mut devices = vec![];
+        let mut sys_block_devs = vec![];
+        for entry in glob(Get::path(SysProperty::SysBlockDev).to_str().unwrap()).expect("Failed to read glob pattern") {
+            match entry {
+                Ok(path) => {
+                    match path.strip_prefix("/sys/block/") {
+                        Ok(p) => sys_block_devs.push(p.to_str().unwrap().to_string()),
+                        Err(e) => println!("{:?}", e),
+                    }
+                }
+                Err(e) => println!("{:?}", e),
+            }
+        }
         match fs::read_to_string(Get::path(SysProperty::StorDev)) {
             Ok(res) => {
-                let re = Regex::new(r"(?m)^\s*(\d*)\s*(\d*)\s*(\d*)\s(\D*)$").unwrap();
+                let re = Regex::new(r"(?m)^\s*(\d*)\s*(\d*)\s*(\d*)\s([\w\d]*)$").unwrap();
                 for storage_dev in re.captures_iter(&res) {
-                    let mut storage = Storage::new();
-                    let major = storage_dev[1].parse::<u16>().unwrap_or(0);
-                    let minor = storage_dev[2].parse::<u16>().unwrap_or(0);
-                    let blocks = storage_dev[3].parse::<u64>().unwrap_or(0);
-                    let storage_name = &storage_dev[4];
-                    storage.name = storage_name.to_string();
-                    storage.major = major;
-                    storage.minor = minor;
-                    storage.size = blocks * 1024;
-                    storage.partitions = Get::storage_partitions(&storage.name);
-                    devices.push(storage);
+                    if !(storage_dev[4].starts_with("loop") || storage_dev[4].starts_with("ram")) && sys_block_devs.contains(&storage_dev[4].to_string()){
+                        let storage = Storage {
+                            major: storage_dev[1].parse::<u16>().unwrap_or(0),
+                            minor: storage_dev[2].parse::<u16>().unwrap_or(0),
+                            size: storage_dev[3].parse::<u64>().unwrap_or(0) * 1024,
+                            name: storage_dev[4].to_string(),
+                            partitions: Get::storage_partitions(&storage_dev[4]),
+                        };
+                        devices.push(storage);
+                    }
                 }
                 devices
             }
@@ -390,7 +404,7 @@ impl Get {
                 let mut partitions = vec![];
                 let re = Regex::new(r"(?m)^\s*(\d*)\s*(\d*)\s*(\d*)\s(\w*\d+)$").unwrap();
                 for storage_dev in re.captures_iter(&res) {
-                    if &storage_dev[4][..3] == stor_name {
+                    if storage_dev[4].starts_with(stor_name) {
                         let mut partition = Partition::new();
                         let major = storage_dev[1].parse::<u16>().unwrap_or(0);
                         let minor = storage_dev[2].parse::<u16>().unwrap_or(0);
