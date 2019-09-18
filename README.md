@@ -4,6 +4,9 @@ All important information about your system in one place.
 - cargo
 - Linux
 ## Installing
+### Cargo
+- `cargo install rustop-rs`
+### Manually
 - `git clone https://github.com/wojciechkepka/rustop`
 - `cd rustop`
 - `cargo build --release`

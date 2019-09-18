@@ -1,5 +1,5 @@
 [package]
-name = "rustop"
+name = "rustop-rs"
 version = "0.4.2"
 authors = ["wojciechkepka <wojtek.kepka@protonmail.com>"]
 edition = "2018"
