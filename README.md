@@ -300,3 +300,112 @@ ARGS:
   ]
 }
 ```
+## Example YAML output
+```
+---
+hostname: wojtas-arch
+kernel_version: 5.2.14-arch1-1-ARCH
+uptime: 14323.98
+cpu: AMD FX(tm)-8150 Eight-Core Processor
+cpu_clock: 3946.1953125
+memory: 16788914176
+free_memory: 7313653760
+swap: 8589930496
+free_swap: 8589930496
+network_dev:
+  - name: lo
+    received_bytes: 16920
+    transfered_bytes: 16920
+    ipv4_addr: 127.0.0.1
+    ipv6_addr: "::1"
+  - name: enp5s0
+    received_bytes: 491390611
+    transfered_bytes: 66680084
+    ipv4_addr: 192.168.0.3
+    ipv6_addr: "fd00:a84e:3f17:bf12:e2f7:f2ca:516f:ba81"
+storage_dev:
+  - name: sda
+    major: 8
+    minor: 0
+    size: 2000398934016
+    partitions:
+      - name: sda1
+        major: 8
+        minor: 1
+        size: 1024
+        filesystem: ""
+        mountpoint: ""
+      - name: sda5
+        major: 8
+        minor: 5
+        size: 314870595584
+        filesystem: ext4
+        mountpoint: /home/wojtek/zdjecia
+      - name: sda6
+        major: 8
+        minor: 6
+        size: 1051762622464
+        filesystem: ext4
+        mountpoint: /home/wojtek/filmy
+      - name: sda7
+        major: 8
+        minor: 7
+        size: 211673939968
+        filesystem: ext4
+        mountpoint: /home/wojtek/dokumenty
+      - name: sda8
+        major: 8
+        minor: 8
+        size: 211883655168
+        filesystem: ext4
+        mountpoint: /home/wojtek/muzyka
+      - name: sda9
+        major: 8
+        minor: 9
+        size: 210191253504
+        filesystem: ext4
+        mountpoint: /home/wojtek/inne
+  - name: sdb
+    major: 8
+    minor: 16
+    size: 120034123776
+    partitions:
+      - name: sdb1
+        major: 8
+        minor: 17
+        size: 536870912
+        filesystem: vfat
+        mountpoint: /efi
+      - name: sdb2
+        major: 8
+        minor: 18
+        size: 8589934592
+        filesystem: ""
+        mountpoint: ""
+      - name: sdb3
+        major: 8
+        minor: 19
+        size: 110906252288
+        filesystem: ext4
+        mountpoint: /
+  - name: sdc
+    major: 8
+    minor: 32
+    size: 320071851008
+    partitions:
+      - name: sdc1
+        major: 8
+        minor: 33
+        size: 320070786048
+        filesystem: ""
+        mountpoint: ""
+vgs: []
+graphics_card: "NVIDIA Corporation GK106 [GeForce GTX 660] (rev a1)"
+temps:
+  - name: fam15h_power
+    temps: []
+  - name: k10temp
+    temps:
+      - name: temp1
+        temp: 45.125
+```
