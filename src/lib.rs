@@ -341,14 +341,13 @@ impl Get {
                 )
                 .unwrap();
                 for network_dev in re.captures_iter(&res) {
-                    let mut interface = NetworkDevice::new();
-                    let received = network_dev[2].parse::<u64>().unwrap_or(0);
-                    let transfered = network_dev[3].parse::<u64>().unwrap_or(0);
-                    interface.name = network_dev[1].to_string();
-                    interface.received_bytes = received;
-                    interface.transfered_bytes = transfered;
-                    interface.ipv4_addr = Get::ipv4_addr(&interface.name);
-                    interface.ipv6_addr = Get::ipv6_addr(&interface.name);
+                    let interface = NetworkDevice {
+                        name: network_dev[1].to_string(),
+                        received_bytes: network_dev[2].parse::<u64>().unwrap_or(0),
+                        transfered_bytes: network_dev[3].parse::<u64>().unwrap_or(0),
+                        ipv4_addr: Get::ipv4_addr(&network_dev[1]),
+                        ipv6_addr: Get::ipv6_addr(&network_dev[1]),
+                    };
                     devices.push(interface);
                 }
                 devices
