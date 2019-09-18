@@ -39,6 +39,7 @@ pub struct NetworkDevice {
     ipv6_addr: Ipv6Addr,
 }
 impl NetworkDevice {
+    #[allow(dead_code)]
     fn new() -> NetworkDevice {
         NetworkDevice {
             name: "".to_string(),
@@ -59,6 +60,7 @@ pub struct Storage {
     partitions: Vec<Partition>,
 }
 impl Storage {
+    #[allow(dead_code)]
     fn new() -> Storage {
         Storage {
             name: "".to_string(),
@@ -362,14 +364,14 @@ impl Get {
     pub fn storage_dev() -> Vec<Storage> {
         let mut devices = vec![];
         let mut sys_block_devs = vec![];
-        for entry in glob(Get::path(SysProperty::SysBlockDev).to_str().unwrap()).expect("Failed to read glob pattern") {
+        for entry in glob(Get::path(SysProperty::SysBlockDev).to_str().unwrap())
+            .expect("Failed to read glob pattern")
+        {
             match entry {
-                Ok(path) => {
-                    match path.strip_prefix("/sys/block/") {
-                        Ok(p) => sys_block_devs.push(p.to_str().unwrap().to_string()),
-                        Err(e) => println!("{:?}", e),
-                    }
-                }
+                Ok(path) => match path.strip_prefix("/sys/block/") {
+                    Ok(p) => sys_block_devs.push(p.to_str().unwrap().to_string()),
+                    Err(e) => println!("{:?}", e),
+                },
                 Err(e) => println!("{:?}", e),
             }
         }
@@ -377,7 +379,9 @@ impl Get {
             Ok(res) => {
                 let re = Regex::new(r"(?m)^\s*(\d*)\s*(\d*)\s*(\d*)\s([\w\d]*)$").unwrap();
                 for storage_dev in re.captures_iter(&res) {
-                    if !(storage_dev[4].starts_with("loop") || storage_dev[4].starts_with("ram")) && sys_block_devs.contains(&storage_dev[4].to_string()){
+                    if !(storage_dev[4].starts_with("loop") || storage_dev[4].starts_with("ram"))
+                        && sys_block_devs.contains(&storage_dev[4].to_string())
+                    {
                         let storage = Storage {
                             major: storage_dev[1].parse::<u16>().unwrap_or(0),
                             minor: storage_dev[2].parse::<u16>().unwrap_or(0),

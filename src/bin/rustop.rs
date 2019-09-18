@@ -5,7 +5,7 @@ use std::fs;
 
 fn main() {
     let args = App::new("rustop")
-        .version("0.4.0")
+        .version("0.4.1")
         .about("Gathers all important information about your system")
         .arg(
             Arg::with_name("file")
