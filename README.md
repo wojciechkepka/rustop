@@ -19,8 +19,9 @@ USAGE:
 FLAGS:
     -h, --help          Prints help information
     -j, --json          Prints output in JSON format
-    -p, --prettyjson    Prints output in pretty printed JSON format   
+    -p, --prettyjson    Prints output in pretty printed JSON format
     -V, --version       Prints version information
+    -y, --yaml          Prints output in YAML format
 
 OPTIONS:
     -f, --file <FILE>    Prints output to the specified file
