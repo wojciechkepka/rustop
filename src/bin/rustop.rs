@@ -1,6 +1,6 @@
-extern crate rustop;
+extern crate rustop_rs;
 use clap::{App, Arg, SubCommand};
-use rustop::*;
+use rustop_rs::*;
 use std::fs;
 
 fn main() {
