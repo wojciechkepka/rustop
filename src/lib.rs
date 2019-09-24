@@ -641,7 +641,6 @@ impl Get {
 
 impl fmt::Display for PcInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-
         write!(
             f,
             "┌──────────────────────────────────

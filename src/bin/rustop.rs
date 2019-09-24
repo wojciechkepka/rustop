@@ -84,7 +84,6 @@ fn main() {
                 ),
         )
         .get_matches();
-    
 
     if args.is_present("file") {
         let p = PcInfo::new();
@@ -158,21 +157,21 @@ fn main() {
             if args.is_present("temps") {
                 print!("│ TEMPERATURES: ");
                 for dev in &p.temps {
-                   print!("{}", &dev);
+                    print!("{}", &dev);
                 }
                 print!("\n");
             }
             if args.is_present("storage") {
                 print!("│ STORAGE: ");
                 for store in &p.storage_dev {
-                   print!("{}", &store);
+                    print!("{}", &store);
                 }
                 print!("\n");
             }
             if args.is_present("volume-group") {
                 print!("│ VOLUME GROUPS: ");
                 for vg in &p.vgs {
-                   print!("{}", &vg);
+                    print!("{}", &vg);
                 }
                 print!("\n");
             }
