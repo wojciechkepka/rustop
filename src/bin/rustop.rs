@@ -56,6 +56,12 @@ fn main() {
                 .long("volume-group")
                 .help("Adds info about volume groups and logical volumes"),
         )
+        .arg(
+            Arg::with_name("quiet")
+                .short("q")
+                .long("quiet")
+                .help("Limits displayed info to specified flags only like ['-s', '-n', '-t', '-g']"),
+        )
         .subcommand(
             SubCommand::with_name("get")
                 .about("gets specified info")
@@ -146,7 +152,9 @@ fn main() {
         } else if args.is_present("yaml") {
             println!("{}", serde_yaml::to_string(&p).unwrap());
         } else {
-            println!("{}", p.to_string());
+            if !args.is_present("quiet") {
+                println!("{}", p.to_string());
+            }
             if args.is_present("network") {
                 print!("│ NETWORK DEVICE: ");
                 for interface in &p.network_dev {

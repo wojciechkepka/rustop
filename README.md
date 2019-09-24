@@ -21,6 +21,7 @@ FLAGS:
     -j, --json            Prints output in JSON format
     -n, --network         Adds info about network interfaces
     -p, --prettyjson      Prints output in pretty printed JSON format
+    -q, --quiet           Limits displayed info to specified flags only like ['-s', '-n', '-t', '-g']
     -s, --storage         Adds info about storage
     -t, --temps           Adds info about temperature sensors
     -V, --version         Prints version information
