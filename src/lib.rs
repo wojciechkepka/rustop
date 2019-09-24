@@ -186,11 +186,11 @@ pub struct PcInfo {
     free_memory: u64,
     swap: u64,
     free_swap: u64,
-    network_dev: Vec<NetworkDevice>,
-    storage_dev: Vec<Storage>,
-    vgs: Vec<VolGroup>,
+    pub network_dev: Vec<NetworkDevice>,
+    pub storage_dev: Vec<Storage>,
+    pub vgs: Vec<VolGroup>,
     graphics_card: String,
-    temps: Vec<DeviceTemperatures>,
+    pub temps: Vec<DeviceTemperatures>,
 }
 impl PcInfo {
     pub fn new() -> PcInfo {
@@ -641,22 +641,7 @@ impl Get {
 
 impl fmt::Display for PcInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut networks = "".to_string();
-        for interface in &self.network_dev {
-            networks.push_str(&interface.to_string());
-        }
-        let mut storage = "".to_string();
-        for store in &self.storage_dev {
-            storage.push_str(&store.to_string());
-        }
-        let mut vgs = "".to_string();
-        for vg in &self.vgs {
-            vgs.push_str(&vg.to_string());
-        }
-        let mut dev_temps = "".to_string();
-        for dev in &self.temps {
-            dev_temps.push_str(&dev.to_string());
-        }
+
         write!(
             f,
             "┌──────────────────────────────────
@@ -669,11 +654,7 @@ impl fmt::Display for PcInfo {
 │ MEM:                  {}  {}
 │ MEMFREE:              {}  {}  {}%
 │ SWAP:                 {}  {}
-│ SWAPFREE:             {}  {}  {}%
-│ NETWORK DEVICE: {}
-│ TEMPERATURES: {}
-│ STORAGE: {}
-│ VOLUME GROUPS: {}",
+│ SWAPFREE:             {}  {}  {}%",
             self.hostname.bold().red(),
             self.kernel_version.bold(),
             utils::conv_t(self.uptime).bold(),
@@ -692,10 +673,6 @@ impl fmt::Display for PcInfo {
             utils::conv_b(self.free_swap).bold(),
             self.free_swap.to_string().bold(),
             utils::conv_p(self.swap, self.free_swap).to_string().bold(),
-            networks,
-            dev_temps,
-            storage,
-            vgs
         )
     }
 }

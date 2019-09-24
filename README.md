@@ -17,11 +17,15 @@ USAGE:
     rustop [FLAGS] [OPTIONS] [SUBCOMMAND]
 
 FLAGS:
-    -h, --help          Prints help information
-    -j, --json          Prints output in JSON format
-    -p, --prettyjson    Prints output in pretty printed JSON format
-    -V, --version       Prints version information
-    -y, --yaml          Prints output in YAML format
+    -h, --help            Prints help information
+    -j, --json            Prints output in JSON format
+    -n, --network         Adds info about network interfaces
+    -p, --prettyjson      Prints output in pretty printed JSON format
+    -s, --storage         Adds info about storage
+    -t, --temps           Adds info about temperature sensors
+    -V, --version         Prints version information
+    -g, --volume-group    Adds info about volume groups and logical volumes
+    -y, --yaml            Prints output in YAML format
 
 OPTIONS:
     -f, --file <FILE>    Prints output to the specified file
@@ -56,7 +60,7 @@ ARGS:
                - graphics
                - temperatures
 ```
-## Example output
+## Standard output
 ```
 ┌──────────────────────────────────
 │ HOSTNAME:             wojtas-arch
@@ -69,6 +73,9 @@ ARGS:
 │ MEMFREE:              7.29 GB  7827324928  46%
 │ SWAP:                 8.00 GB  8589930496
 │ SWAPFREE:             8.00 GB  8589930496  100%
+```
+## Network devices `-n`
+```
 │ NETWORK DEVICE: 
 │   ├─lo──────────────────────────────────
 │   │     Ipv4:     127.0.0.1
@@ -80,12 +87,18 @@ ARGS:
 │   │     Ipv6:     fd00:a84e:3f17:bf12:e2f7:f2ca:516f:ba81
 │   │     DOWN:     460.58 MB      482954238
 │   │     UP:       62.89 MB      65943483
+```
+## Sensors `-t`
+```
 │ TEMPERATURES: 
 │   ├─fam15h_power──────────────────────────────────
 │   │     SENSORS: 
 │   ├─k10temp──────────────────────────────────
 │   │     SENSORS: 
 │   │         ├─temp1 47.125°C
+```
+## Storage `-s`
+```
 │ STORAGE: 
 │   ├─sda──────────────────────────────────
 │   │     MAJ:MIN:     8:0
@@ -148,7 +161,11 @@ ARGS:
 │   │         │     MAJ:MIN:     8:33
 │   │         │     SIZE:        298.09 GB    320070786048
 │   │         │     FILESYSTEM:  
-│   │         │     MOUNTPOINT:  
+│   │         │     MOUNTPOINT:
+```
+## Volume Groups and lvms `-g`
+### TODO
+```
 │ VOLUME GROUPS:
 ```
 ## Example pretty-JSON output
