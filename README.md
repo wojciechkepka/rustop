@@ -165,7 +165,6 @@ ARGS:
 │   │         │     MOUNTPOINT:
 ```
 ## Volume Groups and lvms `-g`
-### TODO
 ```
 │ VOLUME GROUPS: 
 │   ├─centos_docker-cent7──────────────────────────────────
