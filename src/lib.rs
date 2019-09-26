@@ -174,6 +174,15 @@ impl DeviceTemperatures {
         }
     }
 }
+#[derive(Serialize, Deserialize, Debug)]
+pub struct NetworkDevices { pub network_dev: Vec<NetworkDevice>, }
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Storages { pub storage_dev: Vec<Storage>, }
+#[derive(Serialize, Deserialize, Debug)]
+pub struct VolGroups { pub vgs: Vec<VolGroup>, }
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Temperatures { pub temps: Vec<DeviceTemperatures>, }
+
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PcInfo {
@@ -186,11 +195,11 @@ pub struct PcInfo {
     free_memory: u64,
     swap: u64,
     free_swap: u64,
-    pub network_dev: Vec<NetworkDevice>,
-    pub storage_dev: Vec<Storage>,
-    pub vgs: Vec<VolGroup>,
+    pub network_dev: NetworkDevices,
+    pub storage_dev: Storages,
+    pub vgs: VolGroups,
     graphics_card: String,
-    pub temps: Vec<DeviceTemperatures>,
+    pub temps: Temperatures,
 }
 impl PcInfo {
     pub fn new() -> PcInfo {
@@ -224,11 +233,11 @@ impl Default for PcInfo {
             free_memory: 0,
             swap: 0,
             free_swap: 0,
-            network_dev: vec![],
-            storage_dev: vec![],
-            vgs: vec![],
+            network_dev: NetworkDevices { network_dev: vec![] },
+            storage_dev: Storages { storage_dev: vec![] },
+            vgs: VolGroups { vgs: vec![] },
             graphics_card: "".to_string(),
-            temps: vec![],
+            temps: Temperatures { temps: vec![] },
         }
     }
 }
@@ -334,7 +343,7 @@ impl Get {
         }
     }
 
-    pub fn network_dev() -> Vec<NetworkDevice> {
+    pub fn network_dev() -> NetworkDevices {
         let mut devices = vec![];
         match fs::read_to_string(Get::path(SysProperty::NetDev)) {
             Ok(res) => {
@@ -352,16 +361,16 @@ impl Get {
                     };
                     devices.push(interface);
                 }
-                devices
+                NetworkDevices { network_dev: devices }
             }
             Err(e) => {
                 println!("Error - {}", e);
-                devices
+                NetworkDevices { network_dev: devices }
             }
         }
     }
 
-    pub fn storage_dev() -> Vec<Storage> {
+    pub fn storage_dev() -> Storages {
         let mut devices = vec![];
         let mut sys_block_devs = vec![];
         for entry in glob(Get::path(SysProperty::SysBlockDev).to_str().unwrap())
@@ -392,11 +401,11 @@ impl Get {
                         devices.push(storage);
                     }
                 }
-                devices
+                Storages { storage_dev: devices }
             }
             Err(e) => {
                 println!("Error - {}", e);
-                devices
+                Storages { storage_dev: devices }
             }
         }
     }
@@ -450,7 +459,7 @@ impl Get {
         }
     }
 
-    pub fn vgs() -> Vec<VolGroup> {
+    pub fn vgs() -> VolGroups {
         let mut vgs_vec: Vec<VolGroup> = vec![];
         match fs::read_to_string(Get::path(SysProperty::StorDev)) {
             Ok(res) => {
@@ -474,12 +483,12 @@ impl Get {
                                 lvms: Get::lvms(vg[1].to_string()),
                             })
                         }
-                        vgs_vec
+                        VolGroups { vgs: vgs_vec }
                     }
-                    _ => vgs_vec,
+                    _ => VolGroups { vgs: vgs_vec },
                 }
             }
-            _ => vgs_vec,
+            _ => VolGroups { vgs: vgs_vec },
         }
     }
 
@@ -597,7 +606,7 @@ impl Get {
         }
     }
 
-    pub fn temperatures() -> Vec<DeviceTemperatures> {
+    pub fn temperatures() -> Temperatures {
         let paths = fs::read_dir(Get::path(SysProperty::Temperature)).unwrap();
         let mut devices: Vec<DeviceTemperatures> = vec![];
         for path in paths {
@@ -635,7 +644,7 @@ impl Get {
             dev.temps = dev_temps;
             devices.push(dev);
         }
-        devices
+        Temperatures { temps: devices }
     }
 }
 
@@ -675,6 +684,15 @@ impl fmt::Display for PcInfo {
         )
     }
 }
+impl fmt::Display for NetworkDevices {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut s = String::new();
+        for dev in &self.network_dev {
+            s.push_str(&dev.to_string());
+        }
+        write!(f, "│ NETWORK DEVICE: {}", s)
+    }
+}
 impl fmt::Display for NetworkDevice {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
@@ -695,7 +713,15 @@ impl fmt::Display for NetworkDevice {
         )
     }
 }
-
+impl fmt::Display for Storages {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut s = String::new();
+        for dev in &self.storage_dev {
+            s.push_str(&dev.to_string());
+        }
+        write!(f, "│ STORAGE: {}", s)
+    }
+}
 impl fmt::Display for Storage {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut partitions = String::new();
@@ -739,7 +765,15 @@ impl fmt::Display for Partition {
         )
     }
 }
-
+impl fmt::Display for VolGroups {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut s = String::new();
+        for dev in &self.vgs {
+            s.push_str(&dev.to_string());
+        }
+        write!(f, "│ VOLUME GROUPS: {}", s)
+    }
+}
 impl fmt::Display for VolGroup {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut lvms = "".to_string();
@@ -784,7 +818,15 @@ impl fmt::Display for LogVolume {
         )
     }
 }
-
+impl fmt::Display for Temperatures {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut s = String::new();
+        for dev in &self.temps {
+            s.push_str(&dev.to_string());
+        }
+        write!(f, "│ TEMPERATURES: {}", s)
+    }
+}
 impl fmt::Display for DeviceTemperatures {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut temps = "".to_string();

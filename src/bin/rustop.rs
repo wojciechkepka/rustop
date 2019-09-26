@@ -2,6 +2,7 @@ extern crate rustop_rs;
 use clap::{App, Arg, SubCommand};
 use rustop_rs::*;
 use std::fs;
+use serde_json::json;
 fn main() {
     let args = App::new("rustop")
         .version("0.4.2")
@@ -91,32 +92,7 @@ fn main() {
         )
         .get_matches();
 
-    if args.is_present("file") {
-        let p = PcInfo::new();
-
-        if args.is_present("json") {
-            fs::write(
-                args.value_of("file")
-                    .expect("Please provide a valid file path"),
-                serde_json::to_string(&p).unwrap(),
-            )
-            .expect("Couldn't write json file")
-        } else if args.is_present("yaml") {
-            fs::write(
-                args.value_of("file")
-                    .expect("Please provide a valid file path"),
-                serde_yaml::to_string(&p).unwrap(),
-            )
-            .expect("Couldn't write output file")
-        } else {
-            fs::write(
-                args.value_of("file")
-                    .expect("Please provide a valid file path"),
-                p.to_string(),
-            )
-            .expect("Couldn't write output file")
-        }
-    } else if let Some(args) = args.subcommand_matches("get") {
+    if let Some(args) = args.subcommand_matches("get") {
         match args.value_of("info").unwrap() {
             "hostname" => println!("{}", Get::sysproperty(SysProperty::Hostname)),
             "kernel" => println!("{}", Get::sysproperty(SysProperty::OsRelease)),
@@ -145,44 +121,85 @@ fn main() {
         }
     } else {
         let p = PcInfo::new();
-        if args.is_present("json") {
-            println!("{}", serde_json::to_string(&p).unwrap());
-        } else if args.is_present("prettyjson") {
-            println!("{}", serde_json::to_string_pretty(&p).unwrap());
+        let mut pc_info = String::new();
+    
+        if args.is_present("json") || args.is_present("prettyjson") {
+            if !args.is_present("quiet") {
+                if args.is_present("prettyjson") {
+                    pc_info.push_str(&serde_json::to_string_pretty(&p).unwrap());
+                }
+                else {
+                    pc_info.push_str(&serde_json::to_string(&p).unwrap());
+                }
+            } else {
+                let mut j = json!({});
+                if args.is_present("network") {
+                    j["network_dev"] = json!(&p.network_dev);
+                }
+                if args.is_present("temps") {
+                    j["temps"] = json!(&p.temps);
+                }
+                if args.is_present("storage") {
+                    j["storage"] = json!(&p.storage_dev);
+                }
+                if args.is_present("volume-group") {
+                    j["vgs"] = json!(&p.vgs);
+                }
+                if args.is_present("prettyjson") {
+                    pc_info.push_str(&serde_json::to_string_pretty(&j).unwrap());
+                }
+                else {
+                    pc_info.push_str(&serde_json::to_string(&j).unwrap());
+                }
+            }
         } else if args.is_present("yaml") {
-            println!("{}", serde_yaml::to_string(&p).unwrap());
+            if !args.is_present("quiet") {
+                pc_info.push_str(&serde_yaml::to_string(&p).unwrap());
+            } else {
+                if args.is_present("network") {
+                    pc_info.push_str(&serde_yaml::to_string(&p.network_dev).unwrap());
+                }
+                if args.is_present("temps") {
+                    pc_info.push_str(&serde_yaml::to_string(&p.temps).unwrap());
+                }
+                if args.is_present("storage") {
+                    pc_info.push_str(&serde_yaml::to_string(&p.storage_dev).unwrap());
+                }
+                if args.is_present("volume-group") {
+                    pc_info.push_str(&serde_yaml::to_string(&p.vgs).unwrap());
+                }
+            }
         } else {
             if !args.is_present("quiet") {
-                println!("{}", p.to_string());
-            }
-            if args.is_present("network") {
-                print!("│ NETWORK DEVICE: ");
-                for interface in &p.network_dev {
-                    print!("{}", &interface);
+                pc_info.push_str(&p.to_string());
+            } else {
+                if args.is_present("network") {
+                    pc_info.push_str(&p.network_dev.to_string());
                 }
-                print!("\n");
-            }
-            if args.is_present("temps") {
-                print!("│ TEMPERATURES: ");
-                for dev in &p.temps {
-                    print!("{}", &dev);
+                if args.is_present("temps") {
+                    pc_info.push_str(&p.temps.to_string());
                 }
-                print!("\n");
-            }
-            if args.is_present("storage") {
-                print!("│ STORAGE: ");
-                for store in &p.storage_dev {
-                    print!("{}", &store);
+                if args.is_present("storage") {
+                    pc_info.push_str(&p.storage_dev.to_string());
                 }
-                print!("\n");
-            }
-            if args.is_present("volume-group") {
-                print!("│ VOLUME GROUPS: ");
-                for vg in &p.vgs {
-                    print!("{}", &vg);
+                if args.is_present("volume-group") {
+                    pc_info.push_str(&p.vgs.to_string());
                 }
-                print!("\n");
             }
         }
+    
+        if args.is_present("file") {
+            fs::write(
+                    args.value_of("file")
+                    .expect("Please provide a valid file path"),
+                    pc_info,
+                )
+                .expect("Couldn't write json file")
+        } else {
+            println!("{}", pc_info)
+        }
+
     }
+
+
 }
