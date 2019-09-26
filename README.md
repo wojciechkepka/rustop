@@ -167,7 +167,25 @@ ARGS:
 ## Volume Groups and lvms `-g`
 ### TODO
 ```
-│ VOLUME GROUPS:
+│ VOLUME GROUPS: 
+│   ├─centos_docker-cent7──────────────────────────────────
+│   │     FORMAT:        lvm2
+│   │     STATUS:        resizable
+│   │     SIZE:          31134318592
+│   │     LVMS: 
+│   │         ├─swap──────────────────────────────────
+│   │         │     MAJ:MIN:     253:1
+│   │         │     SIZE:        2.88 GB    3087007744
+│   │         │     PATH:  /dev/centos_docker-cent7/swap
+│   │         │     STATUS:  available
+│   │         │     MOUNTPOINT:  
+│   │         ├─root──────────────────────────────────
+│   │         │     MAJ:MIN:     253:0
+│   │         │     SIZE:        26.12 GB    28043116544
+│   │         │     PATH:  /dev/centos_docker-cent7/root
+│   │         │     STATUS:  available
+│   │         │     MOUNTPOINT:  
+
 ```
 ## Example pretty-JSON output
 ```
