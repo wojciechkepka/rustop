@@ -352,14 +352,13 @@ impl Get {
                 )
                 .unwrap();
                 for network_dev in re.captures_iter(&res) {
-                    let interface = NetworkDevice {
+                    devices.push(NetworkDevice {
                         name: network_dev[1].to_string(),
                         received_bytes: network_dev[2].parse::<u64>().unwrap_or(0),
                         transfered_bytes: network_dev[3].parse::<u64>().unwrap_or(0),
                         ipv4_addr: Get::ipv4_addr(&network_dev[1]),
                         ipv6_addr: Get::ipv6_addr(&network_dev[1]),
-                    };
-                    devices.push(interface);
+                    });
                 }
                 NetworkDevices { network_dev: devices }
             }
@@ -391,14 +390,13 @@ impl Get {
                     if !(storage_dev[4].starts_with("loop") || storage_dev[4].starts_with("ram"))
                         && sys_block_devs.contains(&storage_dev[4].to_string())
                     {
-                        let storage = Storage {
+                        devices.push(Storage {
                             major: storage_dev[1].parse::<u16>().unwrap_or(0),
                             minor: storage_dev[2].parse::<u16>().unwrap_or(0),
                             size: storage_dev[3].parse::<u64>().unwrap_or(0) * 1024,
                             name: storage_dev[4].to_string(),
                             partitions: Get::storage_partitions(&storage_dev[4]),
-                        };
-                        devices.push(storage);
+                        });
                     }
                 }
                 Storages { storage_dev: devices }
