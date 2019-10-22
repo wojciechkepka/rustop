@@ -10,6 +10,7 @@ use std::path::Path;
 use std::process::Command;
 use std::str;
 use std::str::FromStr;
+use std::string::String;
 
 pub enum SysProperty {
     CpuInfo,
@@ -175,14 +176,21 @@ impl DeviceTemperatures {
     }
 }
 #[derive(Serialize, Deserialize, Debug)]
-pub struct NetworkDevices { pub network_dev: Vec<NetworkDevice>, }
+pub struct NetworkDevices {
+    pub network_dev: Vec<NetworkDevice>,
+}
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Storages { pub storage_dev: Vec<Storage>, }
+pub struct Storages {
+    pub storage_dev: Vec<Storage>,
+}
 #[derive(Serialize, Deserialize, Debug)]
-pub struct VolGroups { pub vgs: Vec<VolGroup>, }
+pub struct VolGroups {
+    pub vgs: Vec<VolGroup>,
+}
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Temperatures { pub temps: Vec<DeviceTemperatures>, }
-
+pub struct Temperatures {
+    pub temps: Vec<DeviceTemperatures>,
+}
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PcInfo {
@@ -201,26 +209,27 @@ pub struct PcInfo {
     graphics_card: String,
     pub temps: Temperatures,
 }
-impl PcInfo {
-    pub fn new() -> PcInfo {
-        PcInfo {
-            hostname: Get::sysproperty(SysProperty::Hostname),
-            kernel_version: Get::sysproperty(SysProperty::OsRelease),
-            uptime: Get::uptime(),
-            cpu: Get::cpu_info(),
-            cpu_clock: Get::cpu_clock(),
-            memory: Get::mem(Memory::MemTotal),
-            free_memory: Get::mem(Memory::MemFree),
-            swap: Get::mem(Memory::SwapTotal),
-            free_swap: Get::mem(Memory::SwapFree),
-            network_dev: Get::network_dev(),
-            storage_dev: Get::storage_dev(),
-            vgs: Get::vgs(),
-            graphics_card: Get::graphics_card(),
-            temps: Get::temperatures(),
-        }
-    }
-}
+//Disabled while implementing error handling
+//impl PcInfo {
+//    pub fn new() -> PcInfo {
+//        PcInfo {
+//            hostname: Get::sysproperty(SysProperty::Hostname),
+//            kernel_version: Get::sysproperty(SysProperty::OsRelease),
+//            uptime: Get::uptime(),
+//            cpu: Get::cpu_info(),
+//            cpu_clock: Get::cpu_clock(),
+//            memory: Get::mem(Memory::MemTotal),
+//            free_memory: Get::mem(Memory::MemFree),
+//            swap: Get::mem(Memory::SwapTotal),
+//            free_swap: Get::mem(Memory::SwapFree),
+//            network_dev: Get::network_dev(),
+//            storage_dev: Get::storage_dev(),
+//            vgs: Get::vgs(),
+//            graphics_card: Get::graphics_card(),
+//            temps: Get::temperatures(),
+//        }
+//    }
+//}
 impl Default for PcInfo {
     fn default() -> PcInfo {
         PcInfo {
@@ -233,8 +242,12 @@ impl Default for PcInfo {
             free_memory: 0,
             swap: 0,
             free_swap: 0,
-            network_dev: NetworkDevices { network_dev: vec![] },
-            storage_dev: Storages { storage_dev: vec![] },
+            network_dev: NetworkDevices {
+                network_dev: vec![],
+            },
+            storage_dev: Storages {
+                storage_dev: vec![],
+            },
             vgs: VolGroups { vgs: vec![] },
             graphics_card: "".to_string(),
             temps: Temperatures { temps: vec![] },
@@ -269,148 +282,99 @@ impl Get {
         String::from(fs::read_to_string(path).unwrap().trim_end())
     }
 
-    pub fn uptime() -> f64 {
-        match fs::read_to_string(Get::path(SysProperty::Uptime)) {
-            Ok(res) => {
-                let data: Vec<&str> = res.split(' ').collect();
-                data[0].parse::<f64>().unwrap_or(0.)
-            }
-            _ => 0.,
-        }
-    }
-
-    pub fn uptimev2() -> Result<f64, Box<dyn std::error::Error>> {
+    pub fn uptime() -> Result<f64, Box<dyn std::error::Error>> {
         let output = fs::read_to_string(Get::path(SysProperty::Uptime))?;
         Ok(output.split(' ').collect::<Vec<&str>>()[0].parse::<f64>()?)
     }
 
-    pub fn cpu_info() -> String {
-        match fs::read_to_string(Get::path(SysProperty::CpuInfo)) {
-            Ok(res) => {
-                let re = Regex::new(r"model name\s*: (.*)").unwrap();
-                match re.captures(&res) {
-                    Some(data) => data[1].to_string(),
-                    _ => "".to_string(),
-                }
-            }
-            Err(e) => {
-                println!("Error - {}", e);
-                "".to_string()
-            }
+    pub fn cpu_info() -> Result<Option<String>, Box<dyn std::error::Error>> {
+        let output = fs::read_to_string(Get::path(SysProperty::CpuInfo))?;
+        let re = Regex::new(r"model name\s*: (.*)")?;
+        Ok(re
+            .captures(&output)
+            .map_or(None, |x| Some(x[1].to_string())))
+    }
+
+    pub fn mem(target: Memory) -> Result<Option<u64>, Box<dyn std::error::Error>> {
+        let output = fs::read_to_string(Get::path(SysProperty::Mem))?;
+        let re = match target {
+            Memory::SwapFree => Regex::new(r"SwapFree:\s*(\d*)")?,
+            Memory::SwapTotal => Regex::new(r"SwapTotal:\s*(\d*)")?,
+            Memory::MemTotal => Regex::new(r"MemTotal:\s*(\d*)")?,
+            Memory::MemFree => Regex::new(r"MemFree:\s*(\d*)")?,
+        };
+        match re.captures(&output).map(|m| m[1].parse::<u64>()) {
+            Some(n) => Ok(Some(n? * 1024)),
+            _ => Ok(None),
         }
     }
 
-    pub fn mem(target: Memory) -> u64 {
-        match fs::read_to_string(Get::path(SysProperty::Mem)) {
-            Ok(res) => {
-                let re = match target {
-                    Memory::SwapFree => Regex::new(r"SwapFree:\s*(\d*)").unwrap(),
-                    Memory::SwapTotal => Regex::new(r"SwapTotal:\s*(\d*)").unwrap(),
-                    Memory::MemTotal => Regex::new(r"MemTotal:\s*(\d*)").unwrap(),
-                    Memory::MemFree => Regex::new(r"MemFree:\s*(\d*)").unwrap(),
-                };
-                match re.captures(&res) {
-                    Some(data) => match data[1].parse::<u64>() {
-                        Ok(n) => n * 1024,
-                        Err(e) => {
-                            println!("{}", e);
-                            0
-                        }
-                    },
-                    _ => 0,
-                }
-            }
-            _ => 0,
-        }
+    pub fn total_clock_speed() -> Result<f32, Box<dyn std::error::Error>> {
+        let output = fs::read_to_string(Get::path(SysProperty::CpuInfo))?;
+        let re = Regex::new(r"cpu MHz\s*: (.*)")?;
+        Ok(re
+            .captures_iter(&output)
+            .map(|x| x[1].parse::<f32>().unwrap_or(0.))
+            .sum::<f32>())
     }
 
-    pub fn cpu_clock() -> f32 {
-        match fs::read_to_string(Get::path(SysProperty::CpuInfo)) {
-            Ok(res) => {
-                let re = Regex::new(r"cpu MHz\s*: (.*)").unwrap();
-                let mut clock_speed = 0.;
-                let mut core_count = 0;
-                for core_clock in re.captures_iter(&res) {
-                    match &core_clock[1].parse::<f32>() {
-                        Ok(n) => {
-                            clock_speed += n;
-                            core_count += 1;
-                        }
-                        Err(e) => println!("Error - {}", e),
-                    }
-                }
-                clock_speed / core_count as f32
-            }
-            Err(e) => {
-                println!("Error - {}", e);
-                0.
-            }
-        }
+    pub fn total_cpu_cores() -> Result<usize, Box<dyn std::error::Error>> {
+        Ok(fs::read_to_string(Get::path(SysProperty::CpuInfo))?
+            .rmatches("cpu MHz")
+            .count())
     }
 
-    pub fn network_dev() -> NetworkDevices {
+    pub fn cpu_clock() -> Result<f32, Box<dyn std::error::Error>> {
+        Ok(Get::total_clock_speed()? / Get::total_cpu_cores()? as f32)
+    }
+
+    pub fn network_dev() -> Result<NetworkDevices, Box<dyn std::error::Error>> {
         let mut devices = vec![];
-        match fs::read_to_string(Get::path(SysProperty::NetDev)) {
-            Ok(res) => {
-                let re = Regex::new(
-                    r"([\d\w]*):\s*(\d*)\s*\d*\s*\d*\s*\d*\s*\d*\s*\d*\s*\d*\s*\d*\s*(\d*)",
-                )
-                .unwrap();
-                for network_dev in re.captures_iter(&res) {
-                    devices.push(NetworkDevice {
-                        name: network_dev[1].to_string(),
-                        received_bytes: network_dev[2].parse::<u64>().unwrap_or(0),
-                        transfered_bytes: network_dev[3].parse::<u64>().unwrap_or(0),
-                        ipv4_addr: Get::ipv4_addr(&network_dev[1]),
-                        ipv6_addr: Get::ipv6_addr(&network_dev[1]),
-                    });
-                }
-                NetworkDevices { network_dev: devices }
-            }
-            Err(e) => {
-                println!("Error - {}", e);
-                NetworkDevices { network_dev: devices }
-            }
+        let output = fs::read_to_string(Get::path(SysProperty::NetDev))?;
+        let re =
+            Regex::new(r"([\d\w]*):\s*(\d*)\s*\d*\s*\d*\s*\d*\s*\d*\s*\d*\s*\d*\s*\d*\s*(\d*)")?;
+        for network_dev in re.captures_iter(&output) {
+            devices.push(NetworkDevice {
+                name: network_dev[1].to_string(),
+                received_bytes: network_dev[2].parse::<u64>()?,
+                transfered_bytes: network_dev[3].parse::<u64>()?,
+                ipv4_addr: Get::ipv4_addr(&network_dev[1]),
+                ipv6_addr: Get::ipv6_addr(&network_dev[1]),
+            });
         }
+        Ok(NetworkDevices {
+            network_dev: devices,
+        })
     }
 
-    pub fn storage_dev() -> Storages {
+    pub fn storage_dev() -> Result<Vec<Storage>, Box<dyn std::error::Error>> {
         let mut devices = vec![];
         let mut sys_block_devs = vec![];
-        for entry in glob(Get::path(SysProperty::SysBlockDev).to_str().unwrap())
-            .expect("Failed to read glob pattern")
-        {
-            match entry {
-                Ok(path) => match path.strip_prefix("/sys/block/") {
-                    Ok(p) => sys_block_devs.push(p.to_str().unwrap().to_string()),
-                    Err(e) => println!("{:?}", e),
-                },
-                Err(e) => println!("{:?}", e),
-            }
+        for entry in glob(Get::path(SysProperty::SysBlockDev).to_str().unwrap())? {
+            sys_block_devs.push(
+                entry?
+                    .strip_prefix("/sys/block/")?
+                    .to_str()
+                    .unwrap()
+                    .to_string(),
+            )
         }
-        match fs::read_to_string(Get::path(SysProperty::StorDev)) {
-            Ok(res) => {
-                let re = Regex::new(r"(?m)^\s*(\d*)\s*(\d*)\s*(\d*)\s([\w\d]*)$").unwrap();
-                for storage_dev in re.captures_iter(&res) {
-                    if !(storage_dev[4].starts_with("loop") || storage_dev[4].starts_with("ram"))
-                        && sys_block_devs.contains(&storage_dev[4].to_string())
-                    {
-                        devices.push(Storage {
-                            major: storage_dev[1].parse::<u16>().unwrap_or(0),
-                            minor: storage_dev[2].parse::<u16>().unwrap_or(0),
-                            size: storage_dev[3].parse::<u64>().unwrap_or(0) * 1024,
-                            name: storage_dev[4].to_string(),
-                            partitions: Get::storage_partitions(&storage_dev[4]),
-                        });
-                    }
-                }
-                Storages { storage_dev: devices }
-            }
-            Err(e) => {
-                println!("Error - {}", e);
-                Storages { storage_dev: devices }
-            }
+
+        let output = fs::read_to_string(Get::path(SysProperty::StorDev))?;
+        let re = Regex::new(r"(?m)^\s*(\d*)\s*(\d*)\s*(\d*)\s([\w\d]*)$")?;
+        for storage_dev in re.captures_iter(&output).filter(|storage_dev| {
+            !(storage_dev[4].starts_with("loop") || storage_dev[4].starts_with("ram"))
+        }) {
+            devices.push(Storage {
+                major: storage_dev[1].parse::<u16>()?,
+                minor: storage_dev[2].parse::<u16>()?,
+                size: storage_dev[3].parse::<u64>()? * 1024,
+                name: storage_dev[4].to_string(),
+                partitions: Get::storage_partitions(&storage_dev[4]),
+            });
         }
+
+        Ok(devices)
     }
 
     fn storage_partitions(stor_name: &str) -> Vec<Partition> {
