@@ -279,6 +279,11 @@ impl Get {
         }
     }
 
+    pub fn uptimev2() -> Result<f64, Box<dyn std::error::Error>> {
+        let output = fs::read_to_string(Get::path(SysProperty::Uptime))?;
+        Ok(output.split(' ').collect::<Vec<&str>>()[0].parse::<f64>()?)
+    }
+
     pub fn cpu_info() -> String {
         match fs::read_to_string(Get::path(SysProperty::CpuInfo)) {
             Ok(res) => {
