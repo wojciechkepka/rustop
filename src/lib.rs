@@ -527,45 +527,38 @@ impl Get {
         }
     }
 
-    pub fn temperatures() -> Temperatures {
-        let paths = fs::read_dir(Get::path(SysProperty::Temperature)).unwrap();
+    pub fn temperatures() -> Result<Temperatures, Box<dyn std::error::Error>> {
+        // reconsider if this should really return an error if one of the sensors doesn't have a label f.e.
+        let mut sensor_count = 0;
+        let paths = fs::read_dir(Get::path(SysProperty::Temperature))?;
         let mut devices: Vec<DeviceTemperatures> = vec![];
-        for path in paths {
-            let dev_path = path.unwrap().path();
+        let re = Regex::new(r"temp[\d]+_input")?;
+        for dir_entry in paths {
+            let path = dir_entry?.path();
+            println!("{:?}", path);
             let mut dev = DeviceTemperatures::new();
             let mut dev_temps: Vec<Temperature> = vec![];
-            match fs::read_to_string(dev_path.join("name")) {
-                Ok(n) => dev.name = n.trim().to_string(),
-                Err(_e) => dev.name = "NULL".to_string(),
-            }
-            let temperature_files = fs::read_dir(&dev_path).unwrap();
-            let mut count_sensors = 0;
-            for file in temperature_files {
-                let filename = file.unwrap().file_name().into_string().unwrap();
-                let re = Regex::new(r"temp[\d]+_input").unwrap();
-                if re.is_match(&filename) {
-                    count_sensors += 1;
+            dev.name = fs::read_to_string(path.join("name"))?.trim().to_string();
+            for temp_file in fs::read_dir(&path)? {
+                if re.is_match(&temp_file?.path().to_str().unwrap()) {
+                    sensor_count += 1;
                 }
             }
-            for i in 1..=count_sensors {
-                let mut tmp = Temperature::new();
-                match fs::read_to_string(dev_path.join(format!("temp{}_label", i))) {
-                    Ok(label) => tmp.name = label.trim().to_string(),
-                    Err(_e) => tmp.name = format!("temp{}", i),
-                }
-                match fs::read_to_string(dev_path.join(format!("temp{}_input", i))) {
-                    Ok(temp) => {
-                        let t = temp.trim().parse::<f32>().unwrap();
-                        tmp.temp = t / 1000.;
-                    }
-                    Err(_e) => tmp.temp = 0.,
-                }
-                dev_temps.push(tmp);
+            for i in 1..=sensor_count {
+                let mut sensor = Temperature::new();
+                sensor.name = fs::read_to_string(path.join(format!("temp{}_label", i)))?
+                    .trim()
+                    .to_string();
+                sensor.temp = fs::read_to_string(path.join(format!("temp{}_input", i)))?
+                    .trim()
+                    .parse::<f32>()?
+                    / 1000.;
+                dev_temps.push(sensor);
             }
             dev.temps = dev_temps;
             devices.push(dev);
         }
-        Temperatures { temps: devices }
+        Ok(Temperatures { temps: devices })
     }
 }
 

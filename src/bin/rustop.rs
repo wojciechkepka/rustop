@@ -4,43 +4,18 @@ use rustop_rs::*;
 use serde_json::json;
 use std::error::Error;
 use std::fs;
-fn main() {
-    let x = Get::uptime();
-    let y = x.unwrap();
-    println!("{}", y);
-
-    let cpu = Get::cpu_info();
-    let cpu_str = cpu.unwrap();
-    println!("{}", cpu_str.unwrap());
-
-    let mem = Get::mem(Memory::MemTotal);
-    let mem_str = mem.unwrap();
-    println!("{}", mem_str.unwrap());
-
-    //    let clock = Get::cpu_clockv2();
-    //    let xx = clock.unwrap();
-    //    println!("{}", xx.unwrap());
-
-    let cores = Get::total_cpu_cores();
-    let x = cores.unwrap();
-    println!("{}", x);
-
-    let clock_speed = Get::cpu_clock();
-    let y = clock_speed.unwrap();
-    println!("{}", y);
-
-    let avg = Get::cpu_clock();
-    let z = avg.unwrap();
-    println!("{}", z);
-
-    let net_dev = Get::network_dev();
-    let x = net_dev.unwrap();
-    println!("{:#?}", x);
-
-    let sd = Get::storage_dev();
-    let x = sd.unwrap();
-    println!("{:?}", x);
-
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+//    println!("{}", Get::uptime()?);
+//    println!("{}", Get::cpu_info()?.unwrap());
+//    println!("{}", Get::mem(Memory::MemTotal)?.unwrap());
+//    println!("{}", Get::total_cpu_cores()?);
+//    println!("{}", Get::cpu_clock()?);
+//    println!("{:#?}", Get::network_dev().unwrap());
+//    println!("{:#?}", Get::storage_dev()?);
+//    println!("{:#?}", Get::graphics_card()?);
+//    println!("{}", Get::sysproperty(SysProperty::Hostname)?);
+    println!("{:#?}", Get::temperatures()?);
+    Ok(())
     //    let args = App::new("rustop")
     //        .version("0.4.2")
     //        .about("Gathers all important information about your system")

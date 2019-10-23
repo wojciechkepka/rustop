@@ -58,7 +58,10 @@ pub fn conv_hex_to_ip(hex_addr: &str) -> Result<String, std::num::ParseIntError>
         let third_oct = u8::from_str_radix(&hex_addr[2..4], 16)?;
         let fourth_oct = u8::from_str_radix(&hex_addr[..2], 16)?;
 
-        Ok(format!("{}.{}.{}.{}", first_oct, second_oct, third_oct, fourth_oct))
+        Ok(format!(
+            "{}.{}.{}.{}",
+            first_oct, second_oct, third_oct, fourth_oct
+        ))
     } else {
         Ok("".to_string())
     }
