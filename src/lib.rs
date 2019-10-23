@@ -340,7 +340,7 @@ impl Get {
                 received_bytes: network_dev[2].parse::<u64>()?,
                 transfered_bytes: network_dev[3].parse::<u64>()?,
                 ipv4_addr: Get::ipv4_addr(&network_dev[1])?,
-                ipv6_addr: Get::ipv6_addr(&network_dev[1]),
+                ipv6_addr: Get::ipv6_addr(&network_dev[1])?,
             });
         }
         Ok(NetworkDevices {
@@ -488,46 +488,42 @@ impl Get {
                 if line.to_string().contains(&iface_dest) {
                     found = true;
                 } else if found && line.to_string().contains("/32 host LOCAL") {
-                    let re = Regex::new(r"(?m)\|--\s*(.*)$")?;
-                    ip_addr = match re.captures(&file[i - 1])
-                        {
-                            Some(n) => Ipv4Addr::from_str(&n[1])?,
-                            None => Ipv4Addr::UNSPECIFIED,
-                        };
+                    let re = Regex::new(r"\|--\s+(.*)")?;
+                    ip_addr = match re.captures(&file[i - 1]) {
+                        Some(n) => Ipv4Addr::from_str(&n[1])?,
+                        None => Ipv4Addr::UNSPECIFIED,
+                    };
+                    break;
                 }
             }
             Ok(ip_addr)
         }
     }
 
-    fn ipv6_addr(interface_name: &str) -> Ipv6Addr {
+    fn ipv6_addr(interface_name: &str) -> Result<Ipv6Addr, Box<dyn std::error::Error>> {
         let mut ip_addr = Ipv6Addr::UNSPECIFIED;
         if interface_name == "lo" {
-            Ipv6Addr::LOCALHOST //Temporary till I find a way to get extract this too
+            Ok(Ipv6Addr::LOCALHOST)
         } else {
-            match fs::read_to_string("/proc/net/if_inet6") {
-                Ok(data) => {
-                    let re = Regex::new(r"(?m)^([\d\w]*)\s\d*\s\d*\s\d*\s\d*\s*(.*)$").unwrap();
-                    for capture in re.captures_iter(&data) {
-                        if &capture[2] == interface_name {
-                            let ip = format!(
-                                "{}:{}:{}:{}:{}:{}:{}:{}",
-                                &capture[1][..4],
-                                &capture[1][4..8],
-                                &capture[1][8..12],
-                                &capture[1][12..16],
-                                &capture[1][16..20],
-                                &capture[1][20..24],
-                                &capture[1][24..28],
-                                &capture[1][28..32]
-                            );
-                            ip_addr = Ipv6Addr::from_str(&ip).unwrap();
-                        }
-                    }
-                    ip_addr
+            let output = fs::read_to_string("/proc/net/if_inet6")?;
+            let re = Regex::new(r"(?m)^([\d\w]*)\s\d*\s\d*\s\d*\s\d*\s*(.*)$")?;
+            for capture in re.captures_iter(&output) {
+                if &capture[2] == interface_name {
+                    ip_addr = Ipv6Addr::from_str(&format!(
+                        "{}:{}:{}:{}:{}:{}:{}:{}",
+                        &capture[1][..4],
+                        &capture[1][4..8],
+                        &capture[1][8..12],
+                        &capture[1][12..16],
+                        &capture[1][16..20],
+                        &capture[1][20..24],
+                        &capture[1][24..28],
+                        &capture[1][28..32]
+                    ))?;
+                    break;
                 }
-                _ => Ipv6Addr::UNSPECIFIED,
             }
+            Ok(ip_addr)
         }
     }
 
