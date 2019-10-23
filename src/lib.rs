@@ -477,7 +477,7 @@ impl Get {
             let re = Regex::new(r"(?m)^([\d\w]*)\s*([\d\w]*)")?;
             for dest in re.captures_iter(&output) {
                 if &dest[1] == interface_name && &dest[2] != "00000000" {
-                    iface_dest = utils::conv_hex_to_ip(&dest[2]);
+                    iface_dest = utils::conv_hex_to_ip(&dest[2])?;
                 }
             }
 
