@@ -3,7 +3,10 @@ use colored::*;
 use glob::glob;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use std::default::Default;
+use std::error::Error;
 use std::fmt;
+use std::fmt::{Debug, Display};
 use std::fs;
 use std::net::{Ipv4Addr, Ipv6Addr};
 use std::path::Path;
@@ -11,9 +14,6 @@ use std::process::Command;
 use std::str;
 use std::str::FromStr;
 use std::string::String;
-use std::error::Error;
-use std::default::Default;
-use std::fmt::{ Display, Debug };
 
 fn handle<T: Default, E: Display + Debug>(result: Result<T, E>) -> T {
     match result {
@@ -174,7 +174,7 @@ impl Temperature {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Default)]
 pub struct DeviceTemperatures {
     name: String,
     temps: Vec<Temperature>,
@@ -189,19 +189,19 @@ impl DeviceTemperatures {
     }
 }
 type Partitions = Vec<Partition>;
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Default)]
 pub struct NetworkDevices {
     pub network_dev: Vec<NetworkDevice>,
 }
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Default)]
 pub struct Storages {
     pub storage_dev: Vec<Storage>,
 }
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Default)]
 pub struct VolGroups {
     pub vgs: Vec<VolGroup>,
 }
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Default)]
 pub struct Temperatures {
     pub temps: Vec<DeviceTemperatures>,
 }
@@ -223,27 +223,26 @@ pub struct PcInfo {
     graphics_card: String,
     pub temps: Temperatures,
 }
-//Disabled while implementing error handling
-//impl PcInfo {
-//    pub fn new() -> PcInfo {
-//        PcInfo {
-//            hostname: Get::sysproperty(SysProperty::Hostname),
-//            kernel_version: Get::sysproperty(SysProperty::OsRelease),
-//            uptime: Get::uptime(),
-//            cpu: Get::cpu_info(),
-//            cpu_clock: Get::cpu_clock(),
-//            memory: Get::mem(Memory::MemTotal),
-//            free_memory: Get::mem(Memory::MemFree),
-//            swap: Get::mem(Memory::SwapTotal),
-//            free_swap: Get::mem(Memory::SwapFree),
-//            network_dev: Get::network_dev(),
-//            storage_dev: Get::storage_dev(),
-//            vgs: Get::vgs(),
-//            graphics_card: Get::graphics_card(),
-//            temps: Get::temperatures(),
-//        }
-//    }
-//}
+impl PcInfo {
+    pub fn new() -> PcInfo {
+        PcInfo {
+            hostname: handle(Get::sysproperty(SysProperty::Hostname)),
+            kernel_version: handle(Get::sysproperty(SysProperty::OsRelease)),
+            uptime: handle(Get::uptime()),
+            cpu: handle(Get::cpu_info()),
+            cpu_clock: handle(Get::cpu_clock()),
+            memory: handle(Get::mem(Memory::MemTotal)),
+            free_memory: handle(Get::mem(Memory::MemFree)),
+            swap: handle(Get::mem(Memory::SwapTotal)),
+            free_swap: handle(Get::mem(Memory::SwapFree)),
+            network_dev: handle(Get::network_dev()),
+            storage_dev: handle(Get::storage_devices()),
+            vgs: handle(Get::vgs()),
+            graphics_card: handle(Get::graphics_card()),
+            temps: handle(Get::temperatures()),
+        }
+    }
+}
 impl Default for PcInfo {
     fn default() -> PcInfo {
         PcInfo {
@@ -298,7 +297,9 @@ impl Get {
 
     pub fn uptime() -> Result<f64, std::io::Error> {
         let output = fs::read_to_string(Get::path(SysProperty::Uptime))?;
-        Ok(handle(output.split(' ').collect::<Vec<&str>>()[0].parse::<f64>()))
+        Ok(handle(
+            output.split(' ').collect::<Vec<&str>>()[0].parse::<f64>(),
+        ))
     }
 
     pub fn cpu_info() -> Result<String, Box<dyn std::error::Error>> {
@@ -361,7 +362,7 @@ impl Get {
         })
     }
 
-    pub fn storage_devices() -> Result<Vec<Storage>, Box<dyn std::error::Error>> {
+    pub fn storage_devices() -> Result<Storages, Box<dyn std::error::Error>> {
         let mut devices = vec![];
         let mut sys_block_devs = vec![];
         for entry in glob(Get::path(SysProperty::SysBlockDev).to_str().unwrap())? {
@@ -391,7 +392,9 @@ impl Get {
             });
         }
 
-        Ok(devices)
+        Ok(Storages {
+            storage_dev: devices,
+        })
     }
 
     fn storage_partitions(stor_name: &str) -> Result<Partitions, Box<dyn std::error::Error>> {
@@ -541,13 +544,12 @@ impl Get {
 
     pub fn temperatures() -> Result<Temperatures, Box<dyn std::error::Error>> {
         // reconsider if this should really return an error if one of the sensors doesn't have a label f.e.
-        let mut sensor_count = 0;
         let paths = fs::read_dir(Get::path(SysProperty::Temperature))?;
         let mut devices: Vec<DeviceTemperatures> = vec![];
         let re = Regex::new(r"temp[\d]+_input")?;
         for dir_entry in paths {
+            let mut sensor_count = 0;
             let path = dir_entry?.path();
-            println!("{:?}", path);
             let mut dev = DeviceTemperatures::new();
             let mut dev_temps: Vec<Temperature> = vec![];
             dev.name = fs::read_to_string(path.join("name"))?.trim().to_string();
@@ -558,13 +560,15 @@ impl Get {
             }
             for i in 1..=sensor_count {
                 let mut sensor = Temperature::new();
-                sensor.name = fs::read_to_string(path.join(format!("temp{}_label", i)))?
+                sensor.name = fs::read_to_string(path.join(format!("temp{}_label", i)))
+                    .unwrap_or("".to_string())
                     .trim()
                     .to_string();
-                sensor.temp = handle(fs::read_to_string(path.join(format!("temp{}_input", i)))?
-                    .trim()
-                    .parse::<f32>())
-                    / 1000.;
+                sensor.temp = handle(
+                    fs::read_to_string(path.join(format!("temp{}_input", i)))?
+                        .trim()
+                        .parse::<f32>(),
+                ) / 1000.;
                 dev_temps.push(sensor);
             }
             dev.temps = dev_temps;
@@ -616,7 +620,7 @@ impl fmt::Display for NetworkDevices {
         for dev in &self.network_dev {
             s.push_str(&dev.to_string());
         }
-        write!(f, "│ NETWORK DEVICE: {}", s)
+        write!(f, "\n│ NETWORK DEVICE: {}", s)
     }
 }
 impl fmt::Display for NetworkDevice {
@@ -645,7 +649,7 @@ impl fmt::Display for Storages {
         for dev in &self.storage_dev {
             s.push_str(&dev.to_string());
         }
-        write!(f, "│ STORAGE: {}", s)
+        write!(f, "\n│ STORAGE: {}", s)
     }
 }
 impl fmt::Display for Storage {
@@ -697,7 +701,7 @@ impl fmt::Display for VolGroups {
         for dev in &self.vgs {
             s.push_str(&dev.to_string());
         }
-        write!(f, "│ VOLUME GROUPS: {}", s)
+        write!(f, "\n│ VOLUME GROUPS: {}", s)
     }
 }
 impl fmt::Display for VolGroup {
@@ -750,7 +754,7 @@ impl fmt::Display for Temperatures {
         for dev in &self.temps {
             s.push_str(&dev.to_string());
         }
-        write!(f, "│ TEMPERATURES: {}", s)
+        write!(f, "\n│ TEMPERATURES: {}", s)
     }
 }
 impl fmt::Display for DeviceTemperatures {
@@ -773,8 +777,7 @@ impl fmt::Display for Temperature {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "
-│   │         ├─{} {}°C",
+            "\n│   │         ├─{} {}°C",
             self.name.green().bold(),
             self.temp
         )
