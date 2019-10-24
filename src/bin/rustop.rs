@@ -5,15 +5,16 @@ use serde_json::json;
 use std::error::Error;
 use std::fs;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-//    println!("{}", Get::uptime()?);
-//    println!("{}", Get::cpu_info()?.unwrap());
-//    println!("{}", Get::mem(Memory::MemTotal)?.unwrap());
-//    println!("{}", Get::total_cpu_cores()?);
-//    println!("{}", Get::cpu_clock()?);
-//    println!("{:#?}", Get::network_dev().unwrap());
-//    println!("{:#?}", Get::storage_dev()?);
-//    println!("{:#?}", Get::graphics_card()?);
-//    println!("{}", Get::sysproperty(SysProperty::Hostname)?);
+    println!("{}", Get::uptime()?);
+    println!("{}", Get::cpu_info()?);
+    println!("{}", Get::mem(Memory::MemTotal)?);
+    println!("{}", Get::total_cpu_cores()?);
+    println!("{}", Get::cpu_clock()?);
+    println!("{:#?}", Get::network_dev()?);
+    println!("{:#?}", Get::storage_devices()?);
+    println!("{:#?}", Get::graphics_card()?);
+    println!("{}", Get::sysproperty(SysProperty::Hostname)?);
+    println!("{}", Get::uptime()?);
     println!("{:#?}", Get::temperatures()?);
     Ok(())
     //    let args = App::new("rustop")

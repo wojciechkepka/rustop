@@ -11,6 +11,19 @@ use std::process::Command;
 use std::str;
 use std::str::FromStr;
 use std::string::String;
+use std::error::Error;
+use std::default::Default;
+use std::fmt::{ Display, Debug };
+
+fn handle<T: Default, E: Display + Debug>(result: Result<T, E>) -> T {
+    match result {
+        Ok(val) => val,
+        Err(e) => {
+            eprintln!("{:?}", e);
+            Default::default()
+        }
+    }
+}
 
 pub enum SysProperty {
     CpuInfo,
@@ -283,20 +296,20 @@ impl Get {
         Ok(String::from(fs::read_to_string(path)?.trim_end()))
     }
 
-    pub fn uptime() -> Result<f64, Box<dyn std::error::Error>> {
+    pub fn uptime() -> Result<f64, std::io::Error> {
         let output = fs::read_to_string(Get::path(SysProperty::Uptime))?;
-        Ok(output.split(' ').collect::<Vec<&str>>()[0].parse::<f64>()?)
+        Ok(handle(output.split(' ').collect::<Vec<&str>>()[0].parse::<f64>()))
     }
 
-    pub fn cpu_info() -> Result<Option<String>, Box<dyn std::error::Error>> {
+    pub fn cpu_info() -> Result<String, Box<dyn std::error::Error>> {
         let output = fs::read_to_string(Get::path(SysProperty::CpuInfo))?;
         let re = Regex::new(r"model name\s*: (.*)")?;
         Ok(re
             .captures(&output)
-            .map_or(None, |x| Some(x[1].to_string())))
+            .map_or("".to_string(), |x| x[1].to_string()))
     }
 
-    pub fn mem(target: Memory) -> Result<Option<u64>, Box<dyn std::error::Error>> {
+    pub fn mem(target: Memory) -> Result<u64, Box<dyn std::error::Error>> {
         let output = fs::read_to_string(Get::path(SysProperty::Mem))?;
         let re = match target {
             Memory::SwapFree => Regex::new(r"SwapFree:\s*(\d*)")?,
@@ -304,9 +317,9 @@ impl Get {
             Memory::MemTotal => Regex::new(r"MemTotal:\s*(\d*)")?,
             Memory::MemFree => Regex::new(r"MemFree:\s*(\d*)")?,
         };
-        match re.captures(&output).map(|m| m[1].parse::<u64>()) {
-            Some(n) => Ok(Some(n? * 1024)),
-            _ => Ok(None),
+        match re.captures(&output).map(|m| handle(m[1].parse::<u64>())) {
+            Some(n) => Ok(n * 1024),
+            _ => Ok(0),
         }
     }
 
@@ -315,11 +328,11 @@ impl Get {
         let re = Regex::new(r"cpu MHz\s*: (.*)")?;
         Ok(re
             .captures_iter(&output)
-            .map(|x| x[1].parse::<f32>().unwrap_or(0.))
+            .map(|x| handle(x[1].parse::<f32>()))
             .sum::<f32>())
     }
 
-    pub fn total_cpu_cores() -> Result<usize, Box<dyn std::error::Error>> {
+    pub fn total_cpu_cores() -> Result<usize, std::io::Error> {
         Ok(fs::read_to_string(Get::path(SysProperty::CpuInfo))?
             .rmatches("cpu MHz")
             .count())
@@ -337,8 +350,8 @@ impl Get {
         for network_dev in re.captures_iter(&output) {
             devices.push(NetworkDevice {
                 name: network_dev[1].to_string(),
-                received_bytes: network_dev[2].parse::<u64>()?,
-                transfered_bytes: network_dev[3].parse::<u64>()?,
+                received_bytes: handle(network_dev[2].parse::<u64>()),
+                transfered_bytes: handle(network_dev[3].parse::<u64>()),
                 ipv4_addr: Get::ipv4_addr(&network_dev[1])?,
                 ipv6_addr: Get::ipv6_addr(&network_dev[1])?,
             });
@@ -348,17 +361,16 @@ impl Get {
         })
     }
 
-    pub fn storage_dev() -> Result<Vec<Storage>, Box<dyn std::error::Error>> {
+    pub fn storage_devices() -> Result<Vec<Storage>, Box<dyn std::error::Error>> {
         let mut devices = vec![];
         let mut sys_block_devs = vec![];
         for entry in glob(Get::path(SysProperty::SysBlockDev).to_str().unwrap())? {
-            sys_block_devs.push(
-                entry?
-                    .strip_prefix("/sys/block/")?
-                    .to_str()
-                    .unwrap()
-                    .to_string(),
-            )
+            if let Ok(path) = entry {
+                let name = path.strip_prefix("/sys/block/").unwrap();
+                if let Some(str_name) = name.to_str() {
+                    sys_block_devs.push(str_name.to_string())
+                }
+            }
         }
 
         let output = fs::read_to_string(Get::path(SysProperty::StorDev))?;
@@ -371,11 +383,11 @@ impl Get {
             .filter(|storage_dev| &storage_dev[2] == "0")
         {
             devices.push(Storage {
-                major: storage_dev[1].parse::<u16>()?,
-                minor: storage_dev[2].parse::<u16>()?,
-                size: storage_dev[3].parse::<u64>()? * 1024,
+                major: handle(storage_dev[1].parse::<u16>()),
+                minor: handle(storage_dev[2].parse::<u16>()),
+                size: handle(storage_dev[3].parse::<u64>()) * 1024,
                 name: storage_dev[4].to_string(),
-                partitions: Get::storage_partitions(&storage_dev[4])?,
+                partitions: handle(Get::storage_partitions(&storage_dev[4])),
             });
         }
 
@@ -394,8 +406,8 @@ impl Get {
             let partition_name = &storage_dev[4];
 
             let output2 = fs::read_to_string(Get::path(SysProperty::StorMounts))?;
-            let re2 = Regex::new(r"/dev/(\w*)\s(\S*)\s(\S*)")?;
-            for found_partition in re2.captures_iter(&output2) {
+            let re = Regex::new(r"/dev/(\w*)\s(\S*)\s(\S*)")?;
+            for found_partition in re.captures_iter(&output2) {
                 if &found_partition[1] == partition_name {
                     let mountpoint = &found_partition[2];
                     let filesystem = &found_partition[3];
@@ -407,9 +419,9 @@ impl Get {
                     partition.filesystem = "".to_string();
                 }
             }
-            partition.major = storage_dev[1].parse::<u16>()?;
-            partition.minor = storage_dev[2].parse::<u16>()?;
-            partition.size = storage_dev[3].parse::<u64>()? * 1024;
+            partition.major = handle(storage_dev[1].parse::<u16>());
+            partition.minor = handle(storage_dev[2].parse::<u16>());
+            partition.size = handle(storage_dev[3].parse::<u64>()) * 1024;
             partition.name = partition_name.to_string();
             partitions.push(partition);
         }
@@ -423,14 +435,14 @@ impl Get {
         if re.captures(&output).is_some() {
             let cmd = Command::new("vgdisplay").arg("--units").arg("b").output()?;
             let out = str::from_utf8(&cmd.stdout)?;
-            let re2 = Regex::new(r"(?m)VG Name\s*(.*)\n.*\n\s*Format\s*(.*)$(?:\n.*){3}\s*VG Status\s*(.*)$(?:\n.*){6}$\s*VG Size\s*(\d*)")?;
-            for vg in re2.captures_iter(&out) {
+            let re = Regex::new(r"(?m)VG Name\s*(.*)\n.*\n\s*Format\s*(.*)$(?:\n.*){3}\s*VG Status\s*(.*)$(?:\n.*){6}$\s*VG Size\s*(\d*)")?;
+            for vg in re.captures_iter(&out) {
                 vgs_vec.push(VolGroup {
                     name: vg[1].to_string(),
                     format: vg[2].to_string(),
                     status: vg[3].to_string(),
-                    size: vg[4].parse::<u64>().unwrap_or(0),
-                    lvms: Get::lvms(vg[1].to_string())?,
+                    size: handle(vg[4].parse::<u64>()),
+                    lvms: handle(Get::lvms(vg[1].to_string())),
                 })
             }
         }
@@ -449,9 +461,9 @@ impl Get {
                 path: lvm[1].to_string(),
                 vg: lvm[3].to_string(),
                 status: lvm[4].to_string(),
-                size: lvm[5].parse::<u64>()?,
-                major: lvm[6].parse::<u16>()?,
-                minor: lvm[7].parse::<u16>()?,
+                size: handle(lvm[5].parse::<u64>()),
+                major: handle(lvm[6].parse::<u16>()),
+                minor: handle(lvm[7].parse::<u16>()),
                 mountpoint: "".to_string(), // Not yet implemented
             })
         }
@@ -549,9 +561,9 @@ impl Get {
                 sensor.name = fs::read_to_string(path.join(format!("temp{}_label", i)))?
                     .trim()
                     .to_string();
-                sensor.temp = fs::read_to_string(path.join(format!("temp{}_input", i)))?
+                sensor.temp = handle(fs::read_to_string(path.join(format!("temp{}_input", i)))?
                     .trim()
-                    .parse::<f32>()?
+                    .parse::<f32>())
                     / 1000.;
                 dev_temps.push(sensor);
             }
