@@ -6,6 +6,10 @@ use std::path::PathBuf;
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
+#[structopt(
+    name = "rustop",
+    about = "Gathers all important information about your system"
+)]
 struct Opt {
     /// Prints output to the specified file
     #[structopt(short, long, parse(from_os_str))]

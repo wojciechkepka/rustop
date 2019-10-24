@@ -1,9 +1,9 @@
 [package]
 name = "rustop-rs"
-version = "0.4.5"
+version = "0.4.6"
 authors = ["wojciechkepka <wojtek.kepka@protonmail.com>"]
 edition = "2018"
-license = "Apache-2.0"
+license = "Apache 2.0"
 description = "Linux system information parser"
 readme = "README.md"
 homepage = "https://github.com/wojciechkepka/rustop"
