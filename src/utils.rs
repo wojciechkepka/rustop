@@ -51,15 +51,18 @@ pub fn conv_t(sec: f64) -> String {
     }
 }
 
-pub fn conv_hex_to_ip(hex_addr: &str) -> String {
+pub fn conv_hex_to_ip(hex_addr: &str) -> Result<String, std::num::ParseIntError> {
     if hex_addr.len() == 8 {
-        let first_oct = u8::from_str_radix(&hex_addr[6..8], 16).unwrap_or(0);
-        let second_oct = u8::from_str_radix(&hex_addr[4..6], 16).unwrap_or(0);
-        let third_oct = u8::from_str_radix(&hex_addr[2..4], 16).unwrap_or(0);
-        let fourth_oct = u8::from_str_radix(&hex_addr[..2], 16).unwrap_or(0);
+        let first_oct = u8::from_str_radix(&hex_addr[6..8], 16)?;
+        let second_oct = u8::from_str_radix(&hex_addr[4..6], 16)?;
+        let third_oct = u8::from_str_radix(&hex_addr[2..4], 16)?;
+        let fourth_oct = u8::from_str_radix(&hex_addr[..2], 16)?;
 
-        format!("{}.{}.{}.{}", first_oct, second_oct, third_oct, fourth_oct)
+        Ok(format!(
+            "{}.{}.{}.{}",
+            first_oct, second_oct, third_oct, fourth_oct
+        ))
     } else {
-        "".to_string()
+        Ok("".to_string())
     }
 }

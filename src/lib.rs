@@ -3,13 +3,27 @@ use colored::*;
 use glob::glob;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use std::default::Default;
+use std::error::Error;
 use std::fmt;
+use std::fmt::{Debug, Display};
 use std::fs;
 use std::net::{Ipv4Addr, Ipv6Addr};
 use std::path::Path;
 use std::process::Command;
 use std::str;
 use std::str::FromStr;
+use std::string::String;
+
+fn handle<T: Default, E: Display + Debug>(result: Result<T, E>) -> T {
+    match result {
+        Ok(val) => val,
+        Err(e) => {
+            eprintln!("{:?}", e);
+            Default::default()
+        }
+    }
+}
 
 pub enum SysProperty {
     CpuInfo,
@@ -146,43 +160,53 @@ impl LogVolume {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Temperature {
+pub struct Sensor {
     name: String,
     temp: f32,
 }
-impl Temperature {
+impl Sensor {
     #[allow(dead_code)]
-    fn new() -> Temperature {
-        Temperature {
+    fn new() -> Sensor {
+        Sensor {
             name: "".to_string(),
             temp: 0.,
         }
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct DeviceTemperatures {
+type Sensors = Vec<Sensor>;
+#[derive(Serialize, Deserialize, Debug, Default)]
+pub struct DeviceSensors {
     name: String,
-    temps: Vec<Temperature>,
+    sensors: Sensors,
 }
-impl DeviceTemperatures {
+impl DeviceSensors {
     #[allow(dead_code)]
-    fn new() -> DeviceTemperatures {
-        DeviceTemperatures {
+    fn new() -> DeviceSensors {
+        DeviceSensors {
             name: "".to_string(),
-            temps: vec![],
+            sensors: vec![],
         }
     }
 }
-#[derive(Serialize, Deserialize, Debug)]
-pub struct NetworkDevices { pub network_dev: Vec<NetworkDevice>, }
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Storages { pub storage_dev: Vec<Storage>, }
-#[derive(Serialize, Deserialize, Debug)]
-pub struct VolGroups { pub vgs: Vec<VolGroup>, }
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Temperatures { pub temps: Vec<DeviceTemperatures>, }
+#[derive(Serialize, Deserialize, Debug, Default)]
+pub struct Temperatures {
+    pub devices: Vec<DeviceSensors>,
+}
 
+type Partitions = Vec<Partition>;
+#[derive(Serialize, Deserialize, Debug, Default)]
+pub struct NetworkDevices {
+    pub network_dev: Vec<NetworkDevice>,
+}
+#[derive(Serialize, Deserialize, Debug, Default)]
+pub struct Storages {
+    pub storage_dev: Vec<Storage>,
+}
+#[derive(Serialize, Deserialize, Debug, Default)]
+pub struct VolGroups {
+    pub vgs: Vec<VolGroup>,
+}
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PcInfo {
@@ -204,20 +228,20 @@ pub struct PcInfo {
 impl PcInfo {
     pub fn new() -> PcInfo {
         PcInfo {
-            hostname: Get::sysproperty(SysProperty::Hostname),
-            kernel_version: Get::sysproperty(SysProperty::OsRelease),
-            uptime: Get::uptime(),
-            cpu: Get::cpu_info(),
-            cpu_clock: Get::cpu_clock(),
-            memory: Get::mem(Memory::MemTotal),
-            free_memory: Get::mem(Memory::MemFree),
-            swap: Get::mem(Memory::SwapTotal),
-            free_swap: Get::mem(Memory::SwapFree),
-            network_dev: Get::network_dev(),
-            storage_dev: Get::storage_dev(),
-            vgs: Get::vgs(),
-            graphics_card: Get::graphics_card(),
-            temps: Get::temperatures(),
+            hostname: handle(Get::sysproperty(SysProperty::Hostname)),
+            kernel_version: handle(Get::sysproperty(SysProperty::OsRelease)),
+            uptime: handle(Get::uptime()),
+            cpu: handle(Get::cpu_info()),
+            cpu_clock: handle(Get::cpu_clock()),
+            memory: handle(Get::mem(Memory::MemTotal)),
+            free_memory: handle(Get::mem(Memory::MemFree)),
+            swap: handle(Get::mem(Memory::SwapTotal)),
+            free_swap: handle(Get::mem(Memory::SwapFree)),
+            network_dev: handle(Get::network_dev()),
+            storage_dev: handle(Get::storage_devices()),
+            vgs: handle(Get::vgs()),
+            graphics_card: handle(Get::graphics_card()),
+            temps: handle(Get::temperatures()),
         }
     }
 }
@@ -233,11 +257,15 @@ impl Default for PcInfo {
             free_memory: 0,
             swap: 0,
             free_swap: 0,
-            network_dev: NetworkDevices { network_dev: vec![] },
-            storage_dev: Storages { storage_dev: vec![] },
+            network_dev: NetworkDevices {
+                network_dev: vec![],
+            },
+            storage_dev: Storages {
+                storage_dev: vec![],
+            },
             vgs: VolGroups { vgs: vec![] },
             graphics_card: "".to_string(),
-            temps: Temperatures { temps: vec![] },
+            temps: Temperatures { devices: vec![] },
         }
     }
 }
@@ -260,389 +288,295 @@ impl Get {
         }
     }
 
-    pub fn sysproperty(property: SysProperty) -> String {
+    pub fn sysproperty(property: SysProperty) -> Result<String, std::io::Error> {
         let path = match property {
             SysProperty::OsRelease => Get::path(SysProperty::OsRelease),
             SysProperty::Hostname => Get::path(SysProperty::Hostname),
             _ => &Path::new(""),
         };
-        String::from(fs::read_to_string(path).unwrap().trim_end())
+        Ok(String::from(fs::read_to_string(path)?.trim_end()))
     }
 
-    pub fn uptime() -> f64 {
-        match fs::read_to_string(Get::path(SysProperty::Uptime)) {
-            Ok(res) => {
-                let data: Vec<&str> = res.split(' ').collect();
-                data[0].parse::<f64>().unwrap_or(0.)
-            }
-            _ => 0.,
+    pub fn uptime() -> Result<f64, std::io::Error> {
+        let output = fs::read_to_string(Get::path(SysProperty::Uptime))?;
+        Ok(handle(
+            output.split(' ').collect::<Vec<&str>>()[0].parse::<f64>(),
+        ))
+    }
+
+    pub fn cpu_info() -> Result<String, Box<dyn std::error::Error>> {
+        let output = fs::read_to_string(Get::path(SysProperty::CpuInfo))?;
+        let re = Regex::new(r"model name\s*: (.*)")?;
+        Ok(re
+            .captures(&output)
+            .map_or("".to_string(), |x| x[1].to_string()))
+    }
+
+    pub fn mem(target: Memory) -> Result<u64, Box<dyn std::error::Error>> {
+        let output = fs::read_to_string(Get::path(SysProperty::Mem))?;
+        let re = match target {
+            Memory::SwapFree => Regex::new(r"SwapFree:\s*(\d*)")?,
+            Memory::SwapTotal => Regex::new(r"SwapTotal:\s*(\d*)")?,
+            Memory::MemTotal => Regex::new(r"MemTotal:\s*(\d*)")?,
+            Memory::MemFree => Regex::new(r"MemFree:\s*(\d*)")?,
+        };
+        match re.captures(&output).map(|m| handle(m[1].parse::<u64>())) {
+            Some(n) => Ok(n * 1024),
+            _ => Ok(0),
         }
     }
 
-    pub fn cpu_info() -> String {
-        match fs::read_to_string(Get::path(SysProperty::CpuInfo)) {
-            Ok(res) => {
-                let re = Regex::new(r"model name\s*: (.*)").unwrap();
-                match re.captures(&res) {
-                    Some(data) => data[1].to_string(),
-                    _ => "".to_string(),
-                }
-            }
-            Err(e) => {
-                println!("Error - {}", e);
-                "".to_string()
-            }
-        }
+    pub fn total_clock_speed() -> Result<f32, Box<dyn std::error::Error>> {
+        let output = fs::read_to_string(Get::path(SysProperty::CpuInfo))?;
+        let re = Regex::new(r"cpu MHz\s*: (.*)")?;
+        Ok(re
+            .captures_iter(&output)
+            .map(|x| handle(x[1].parse::<f32>()))
+            .sum::<f32>())
     }
 
-    pub fn mem(target: Memory) -> u64 {
-        match fs::read_to_string(Get::path(SysProperty::Mem)) {
-            Ok(res) => {
-                let re = match target {
-                    Memory::SwapFree => Regex::new(r"SwapFree:\s*(\d*)").unwrap(),
-                    Memory::SwapTotal => Regex::new(r"SwapTotal:\s*(\d*)").unwrap(),
-                    Memory::MemTotal => Regex::new(r"MemTotal:\s*(\d*)").unwrap(),
-                    Memory::MemFree => Regex::new(r"MemFree:\s*(\d*)").unwrap(),
-                };
-                match re.captures(&res) {
-                    Some(data) => match data[1].parse::<u64>() {
-                        Ok(n) => n * 1024,
-                        Err(e) => {
-                            println!("{}", e);
-                            0
-                        }
-                    },
-                    _ => 0,
-                }
-            }
-            _ => 0,
-        }
+    pub fn total_cpu_cores() -> Result<usize, std::io::Error> {
+        Ok(fs::read_to_string(Get::path(SysProperty::CpuInfo))?
+            .rmatches("cpu MHz")
+            .count())
     }
 
-    pub fn cpu_clock() -> f32 {
-        match fs::read_to_string(Get::path(SysProperty::CpuInfo)) {
-            Ok(res) => {
-                let re = Regex::new(r"cpu MHz\s*: (.*)").unwrap();
-                let mut clock_speed = 0.;
-                let mut core_count = 0;
-                for core_clock in re.captures_iter(&res) {
-                    match &core_clock[1].parse::<f32>() {
-                        Ok(n) => {
-                            clock_speed += n;
-                            core_count += 1;
-                        }
-                        Err(e) => println!("Error - {}", e),
-                    }
-                }
-                clock_speed / core_count as f32
-            }
-            Err(e) => {
-                println!("Error - {}", e);
-                0.
-            }
-        }
+    pub fn cpu_clock() -> Result<f32, Box<dyn std::error::Error>> {
+        Ok(Get::total_clock_speed()? / Get::total_cpu_cores()? as f32)
     }
 
-    pub fn network_dev() -> NetworkDevices {
+    pub fn network_dev() -> Result<NetworkDevices, Box<dyn std::error::Error>> {
         let mut devices = vec![];
-        match fs::read_to_string(Get::path(SysProperty::NetDev)) {
-            Ok(res) => {
-                let re = Regex::new(
-                    r"([\d\w]*):\s*(\d*)\s*\d*\s*\d*\s*\d*\s*\d*\s*\d*\s*\d*\s*\d*\s*(\d*)",
-                )
-                .unwrap();
-                for network_dev in re.captures_iter(&res) {
-                    devices.push(NetworkDevice {
-                        name: network_dev[1].to_string(),
-                        received_bytes: network_dev[2].parse::<u64>().unwrap_or(0),
-                        transfered_bytes: network_dev[3].parse::<u64>().unwrap_or(0),
-                        ipv4_addr: Get::ipv4_addr(&network_dev[1]),
-                        ipv6_addr: Get::ipv6_addr(&network_dev[1]),
-                    });
-                }
-                NetworkDevices { network_dev: devices }
-            }
-            Err(e) => {
-                println!("Error - {}", e);
-                NetworkDevices { network_dev: devices }
-            }
+        let output = fs::read_to_string(Get::path(SysProperty::NetDev))?;
+        let re =
+            Regex::new(r"([\d\w]*):\s*(\d*)\s*\d*\s*\d*\s*\d*\s*\d*\s*\d*\s*\d*\s*\d*\s*(\d*)")?;
+        for network_dev in re.captures_iter(&output) {
+            devices.push(NetworkDevice {
+                name: network_dev[1].to_string(),
+                received_bytes: handle(network_dev[2].parse::<u64>()),
+                transfered_bytes: handle(network_dev[3].parse::<u64>()),
+                ipv4_addr: Get::ipv4_addr(&network_dev[1])?,
+                ipv6_addr: Get::ipv6_addr(&network_dev[1])?,
+            });
         }
+        Ok(NetworkDevices {
+            network_dev: devices,
+        })
     }
 
-    pub fn storage_dev() -> Storages {
+    pub fn storage_devices() -> Result<Storages, Box<dyn std::error::Error>> {
         let mut devices = vec![];
         let mut sys_block_devs = vec![];
-        for entry in glob(Get::path(SysProperty::SysBlockDev).to_str().unwrap())
-            .expect("Failed to read glob pattern")
+        for entry in glob(Get::path(SysProperty::SysBlockDev).to_str().unwrap())? {
+            if let Ok(path) = entry {
+                let name = path.strip_prefix("/sys/block/").unwrap();
+                if let Some(str_name) = name.to_str() {
+                    sys_block_devs.push(str_name.to_string())
+                }
+            }
+        }
+
+        let output = fs::read_to_string(Get::path(SysProperty::StorDev))?;
+        let re = Regex::new(r"(?m)^\s*(\d*)\s*(\d*)\s*(\d*)\s([\w\d]*)$")?;
+        for storage_dev in re
+            .captures_iter(&output)
+            .filter(|storage_dev| {
+                !(storage_dev[4].starts_with("loop") || storage_dev[4].starts_with("ram"))
+            })
+            .filter(|storage_dev| &storage_dev[2] == "0")
         {
-            match entry {
-                Ok(path) => match path.strip_prefix("/sys/block/") {
-                    Ok(p) => sys_block_devs.push(p.to_str().unwrap().to_string()),
-                    Err(e) => println!("{:?}", e),
-                },
-                Err(e) => println!("{:?}", e),
-            }
+            devices.push(Storage {
+                major: handle(storage_dev[1].parse::<u16>()),
+                minor: handle(storage_dev[2].parse::<u16>()),
+                size: handle(storage_dev[3].parse::<u64>()) * 1024,
+                name: storage_dev[4].to_string(),
+                partitions: handle(Get::storage_partitions(&storage_dev[4])),
+            });
         }
-        match fs::read_to_string(Get::path(SysProperty::StorDev)) {
-            Ok(res) => {
-                let re = Regex::new(r"(?m)^\s*(\d*)\s*(\d*)\s*(\d*)\s([\w\d]*)$").unwrap();
-                for storage_dev in re.captures_iter(&res) {
-                    if !(storage_dev[4].starts_with("loop") || storage_dev[4].starts_with("ram"))
-                        && sys_block_devs.contains(&storage_dev[4].to_string())
-                    {
-                        devices.push(Storage {
-                            major: storage_dev[1].parse::<u16>().unwrap_or(0),
-                            minor: storage_dev[2].parse::<u16>().unwrap_or(0),
-                            size: storage_dev[3].parse::<u64>().unwrap_or(0) * 1024,
-                            name: storage_dev[4].to_string(),
-                            partitions: Get::storage_partitions(&storage_dev[4]),
-                        });
-                    }
-                }
-                Storages { storage_dev: devices }
-            }
-            Err(e) => {
-                println!("Error - {}", e);
-                Storages { storage_dev: devices }
-            }
-        }
+
+        Ok(Storages {
+            storage_dev: devices,
+        })
     }
 
-    fn storage_partitions(stor_name: &str) -> Vec<Partition> {
-        match fs::read_to_string(Get::path(SysProperty::StorDev)) {
-            Ok(res) => {
-                let mut partitions = vec![];
-                let re = Regex::new(r"(?m)^\s*(\d*)\s*(\d*)\s*(\d*)\s(\w*\d+)$").unwrap();
-                for storage_dev in re.captures_iter(&res) {
-                    if storage_dev[4].starts_with(stor_name) {
-                        let mut partition = Partition::new();
-                        let major = storage_dev[1].parse::<u16>().unwrap_or(0);
-                        let minor = storage_dev[2].parse::<u16>().unwrap_or(0);
-                        let blocks = storage_dev[3].parse::<u64>().unwrap_or(0);
-                        let partition_name = &storage_dev[4];
+    fn storage_partitions(stor_name: &str) -> Result<Partitions, Box<dyn std::error::Error>> {
+        let mut partitions = vec![];
+        let output = fs::read_to_string(Get::path(SysProperty::StorDev))?;
+        let re = Regex::new(r"(?m)^\s*(\d*)\s*(\d*)\s*(\d*)\s(\w*\d+)$")?;
+        for storage_dev in re
+            .captures_iter(&output)
+            .filter(|x| x[4].starts_with(stor_name))
+        {
+            let mut partition = Partition::new();
+            let partition_name = &storage_dev[4];
 
-                        match fs::read_to_string(Get::path(SysProperty::StorMounts)) {
-                            Ok(data) => {
-                                let rere = Regex::new(r"/dev/(\w*)\s(\S*)\s(\S*)").unwrap();
-                                for found_partition in rere.captures_iter(&data) {
-                                    if &found_partition[1] == partition_name {
-                                        let mountpoint = &found_partition[2];
-                                        let filesystem = &found_partition[3];
-                                        partition.mountpoint = mountpoint.to_string();
-                                        partition.filesystem = filesystem.to_string();
-                                        break;
-                                    } else {
-                                        partition.mountpoint = "".to_string();
-                                        partition.filesystem = "".to_string();
-                                    }
-                                }
-                                partition.name = partition_name.to_string();
-                                partition.major = major;
-                                partition.minor = minor;
-                                partition.size = blocks * 1024;
-                                partitions.push(partition);
-                            }
-                            Err(e) => {
-                                println!("{}", e);
-                            }
-                        }
-                    }
+            let output2 = fs::read_to_string(Get::path(SysProperty::StorMounts))?;
+            let re = Regex::new(r"/dev/(\w*)\s(\S*)\s(\S*)")?;
+            for found_partition in re.captures_iter(&output2) {
+                if &found_partition[1] == partition_name {
+                    let mountpoint = &found_partition[2];
+                    let filesystem = &found_partition[3];
+                    partition.mountpoint = mountpoint.to_string();
+                    partition.filesystem = filesystem.to_string();
+                    break;
+                } else {
+                    partition.mountpoint = "".to_string();
+                    partition.filesystem = "".to_string();
                 }
-                partitions
             }
-            Err(e) => {
-                println!("Error - {}", e);
-                vec![]
-            }
+            partition.major = handle(storage_dev[1].parse::<u16>());
+            partition.minor = handle(storage_dev[2].parse::<u16>());
+            partition.size = handle(storage_dev[3].parse::<u64>()) * 1024;
+            partition.name = partition_name.to_string();
+            partitions.push(partition);
         }
+        Ok(partitions)
     }
 
-    pub fn vgs() -> VolGroups {
+    pub fn vgs() -> Result<VolGroups, Box<dyn std::error::Error>> {
         let mut vgs_vec: Vec<VolGroup> = vec![];
-        match fs::read_to_string(Get::path(SysProperty::StorDev)) {
-            Ok(res) => {
-                let re = Regex::new(r"(?m)\d*\s*dm-").unwrap();
-                match re.captures(&res) {
-                    Some(_n) => {
-                        let cmd = Command::new("vgdisplay")
-                            .arg("--units")
-                            .arg("b")
-                            .output()
-                            .expect("err");
-                        let out = str::from_utf8(&cmd.stdout).unwrap();
-
-                        let r = Regex::new(r"(?m)VG Name\s*(.*)\n.*\n\s*Format\s*(.*)$(?:\n.*){3}\s*VG Status\s*(.*)$(?:\n.*){6}$\s*VG Size\s*(\d*)").unwrap();
-                        for vg in r.captures_iter(&out) {
-                            vgs_vec.push(VolGroup {
-                                name: vg[1].to_string(),
-                                format: vg[2].to_string(),
-                                status: vg[3].to_string(),
-                                size: vg[4].parse::<u64>().unwrap_or(0),
-                                lvms: Get::lvms(vg[1].to_string()),
-                            })
-                        }
-                        VolGroups { vgs: vgs_vec }
-                    }
-                    _ => VolGroups { vgs: vgs_vec },
-                }
-            }
-            _ => VolGroups { vgs: vgs_vec },
-        }
-    }
-
-    fn lvms(vg_name: String) -> Vec<LogVolume> {
-        let mut lvms_vec: Vec<LogVolume> = vec![];
-        let cmd = Command::new("lvdisplay")
-            .arg("--units")
-            .arg("b")
-            .output()
-            .expect("err");
-        let out = str::from_utf8(&cmd.stdout).unwrap_or("");
-        let re = Regex::new(r"(?m)LV Path\s*(.*)\n\s*LV Name\s*(.*)$\s*VG Name\s*(.*)$(?:\n.*){3}$\s*LV Status\s*(.*)\n.*$\n\s*LV Size\s*(\d*).*$(?:\n.*){5}\s*Block device\s*(\d*):(\d*)$").unwrap();
-        for lvm in re.captures_iter(&out) {
-            if lvm[3] == vg_name {
-                let major = lvm[6].parse::<u16>().unwrap_or(0);
-                let minor = lvm[7].parse::<u16>().unwrap_or(0);
-                lvms_vec.push(LogVolume {
-                    name: lvm[2].to_string(),
-                    path: lvm[1].to_string(),
-                    vg: lvm[3].to_string(),
-                    status: lvm[4].to_string(),
-                    size: lvm[5].parse::<u64>().unwrap_or(0),
-                    major,
-                    minor,
-                    mountpoint: "".to_string(), // Not yet implemented
+        let output = fs::read_to_string(Get::path(SysProperty::StorDev))?;
+        let re = Regex::new(r"(?m)\d*\s*dm-")?;
+        if re.captures(&output).is_some() {
+            let cmd = Command::new("vgdisplay").arg("--units").arg("b").output()?;
+            let out = str::from_utf8(&cmd.stdout)?;
+            let re = Regex::new(r"(?m)VG Name\s*(.*)\n.*\n\s*Format\s*(.*)$(?:\n.*){3}\s*VG Status\s*(.*)$(?:\n.*){6}$\s*VG Size\s*(\d*)")?;
+            for vg in re.captures_iter(&out) {
+                vgs_vec.push(VolGroup {
+                    name: vg[1].to_string(),
+                    format: vg[2].to_string(),
+                    status: vg[3].to_string(),
+                    size: handle(vg[4].parse::<u64>()),
+                    lvms: handle(Get::lvms(vg[1].to_string())),
                 })
             }
         }
-        lvms_vec
+
+        Ok(VolGroups { vgs: vgs_vec })
     }
 
-    pub fn graphics_card() -> String {
-        if Command::new("lspci").output().is_ok() {
-            let cmd = Command::new("lspci").output().unwrap();
-            let out = str::from_utf8(&cmd.stdout).unwrap_or("");
-            let re = Regex::new(r"(?m)VGA compatible controller:\s*(.*)$").unwrap();
-            match re.captures(&out) {
-                Some(vga) => vga[1].to_string(),
-                _ => "".to_string(),
-            }
-        } else {
-            "".to_string()
+    fn lvms(vg_name: String) -> Result<Vec<LogVolume>, Box<dyn std::error::Error>> {
+        let mut lvms_vec: Vec<LogVolume> = vec![];
+        let cmd = Command::new("lvdisplay").arg("--units").arg("b").output()?;
+        let out = str::from_utf8(&cmd.stdout)?;
+        let re = Regex::new(r"(?m)LV Path\s*(.*)\n\s*LV Name\s*(.*)$\s*VG Name\s*(.*)$(?:\n.*){3}$\s*LV Status\s*(.*)\n.*$\n\s*LV Size\s*(\d*).*$(?:\n.*){5}\s*Block device\s*(\d*):(\d*)$")?;
+        for lvm in re.captures_iter(&out).filter(|lvm| lvm[3] == vg_name) {
+            lvms_vec.push(LogVolume {
+                name: lvm[2].to_string(),
+                path: lvm[1].to_string(),
+                vg: lvm[3].to_string(),
+                status: lvm[4].to_string(),
+                size: handle(lvm[5].parse::<u64>()),
+                major: handle(lvm[6].parse::<u16>()),
+                minor: handle(lvm[7].parse::<u16>()),
+                mountpoint: "".to_string(), // Not yet implemented
+            })
         }
+        Ok(lvms_vec)
     }
 
-    fn ipv4_addr(interface_name: &str) -> Ipv4Addr {
+    pub fn graphics_card() -> Result<String, Box<dyn std::error::Error>> {
+        let cmd = Command::new("lspci").output()?;
+        let out = str::from_utf8(&cmd.stdout)?;
+        let re = Regex::new(r"(?m)VGA compatible controller:\s*(.*)$")?;
+        Ok(re
+            .captures(&out)
+            .map_or("".to_string(), |vga| vga[1].to_string()))
+    }
+
+    fn ipv4_addr(interface_name: &str) -> Result<Ipv4Addr, Box<dyn std::error::Error>> {
         let mut iface_dest = "".to_string();
         let mut ip_addr = Ipv4Addr::UNSPECIFIED;
         if interface_name == "lo" {
-            Ipv4Addr::LOCALHOST
+            Ok(Ipv4Addr::LOCALHOST)
         } else {
-            if let Ok(data) = fs::read_to_string("/proc/net/route") {
-                let re = Regex::new(r"(?m)^([\d\w]*)\s*([\d\w]*)").unwrap();
-                for capture in re.captures_iter(&data) {
-                    if &capture[1] == interface_name && &capture[2] != "00000000" {
-                        iface_dest = utils::conv_hex_to_ip(&capture[2]);
-                    }
+            let output = fs::read_to_string("/proc/net/route")?;
+            let re = Regex::new(r"(?m)^([\d\w]*)\s*([\d\w]*)")?;
+            for dest in re.captures_iter(&output) {
+                if &dest[1] == interface_name && &dest[2] != "00000000" {
+                    iface_dest = utils::conv_hex_to_ip(&dest[2])?;
                 }
             }
 
-            match fs::read_to_string("/proc/net/fib_trie") {
-                Ok(data) => {
-                    let mut found = false;
-                    let file = data.split('\n').collect::<Vec<&str>>();
-                    for (i, line) in (&file).iter().enumerate() {
-                        if line.to_string().contains(&iface_dest) {
-                            found = true;
-                        } else if found && line.to_string().contains("/32 host LOCAL") {
-                            let re = Regex::new(r"(?m)\|--\s*(.*)$").unwrap();
-                            match re.captures(&file[i - 1]) {
-                                Some(n) => {
-                                    ip_addr = Ipv4Addr::from_str(&n[1]).unwrap();
-                                    break;
-                                }
-                                _ => break,
-                            }
-                        }
-                    }
-                    ip_addr
+            let output = fs::read_to_string("/proc/net/fib_trie")?;
+            let file = output.split('\n').collect::<Vec<&str>>();
+            let mut found = false;
+            for (i, line) in (&file).iter().enumerate() {
+                if line.to_string().contains(&iface_dest) {
+                    found = true;
+                } else if found && line.to_string().contains("/32 host LOCAL") {
+                    let re = Regex::new(r"\|--\s+(.*)")?;
+                    ip_addr = match re.captures(&file[i - 1]) {
+                        Some(n) => Ipv4Addr::from_str(&n[1])?,
+                        None => Ipv4Addr::UNSPECIFIED,
+                    };
+                    break;
                 }
-
-                _ => Ipv4Addr::UNSPECIFIED,
             }
+            Ok(ip_addr)
         }
     }
 
-    fn ipv6_addr(interface_name: &str) -> Ipv6Addr {
+    fn ipv6_addr(interface_name: &str) -> Result<Ipv6Addr, Box<dyn std::error::Error>> {
         let mut ip_addr = Ipv6Addr::UNSPECIFIED;
         if interface_name == "lo" {
-            Ipv6Addr::LOCALHOST //Temporary till I find a way to get extract this too
+            Ok(Ipv6Addr::LOCALHOST)
         } else {
-            match fs::read_to_string("/proc/net/if_inet6") {
-                Ok(data) => {
-                    let re = Regex::new(r"(?m)^([\d\w]*)\s\d*\s\d*\s\d*\s\d*\s*(.*)$").unwrap();
-                    for capture in re.captures_iter(&data) {
-                        if &capture[2] == interface_name {
-                            let ip = format!(
-                                "{}:{}:{}:{}:{}:{}:{}:{}",
-                                &capture[1][..4],
-                                &capture[1][4..8],
-                                &capture[1][8..12],
-                                &capture[1][12..16],
-                                &capture[1][16..20],
-                                &capture[1][20..24],
-                                &capture[1][24..28],
-                                &capture[1][28..32]
-                            );
-                            ip_addr = Ipv6Addr::from_str(&ip).unwrap();
-                        }
-                    }
-                    ip_addr
+            let output = fs::read_to_string("/proc/net/if_inet6")?;
+            let re = Regex::new(r"(?m)^([\d\w]*)\s\d*\s\d*\s\d*\s\d*\s*(.*)$")?;
+            for capture in re.captures_iter(&output) {
+                if &capture[2] == interface_name {
+                    ip_addr = Ipv6Addr::from_str(&format!(
+                        "{}:{}:{}:{}:{}:{}:{}:{}",
+                        &capture[1][..4],
+                        &capture[1][4..8],
+                        &capture[1][8..12],
+                        &capture[1][12..16],
+                        &capture[1][16..20],
+                        &capture[1][20..24],
+                        &capture[1][24..28],
+                        &capture[1][28..32]
+                    ))?;
+                    break;
                 }
-                _ => Ipv6Addr::UNSPECIFIED,
             }
+            Ok(ip_addr)
         }
     }
 
-    pub fn temperatures() -> Temperatures {
-        let paths = fs::read_dir(Get::path(SysProperty::Temperature)).unwrap();
-        let mut devices: Vec<DeviceTemperatures> = vec![];
-        for path in paths {
-            let dev_path = path.unwrap().path();
-            let mut dev = DeviceTemperatures::new();
-            let mut dev_temps: Vec<Temperature> = vec![];
-            match fs::read_to_string(dev_path.join("name")) {
-                Ok(n) => dev.name = n.trim().to_string(),
-                Err(_e) => dev.name = "NULL".to_string(),
-            }
-            let temperature_files = fs::read_dir(&dev_path).unwrap();
-            let mut count_sensors = 0;
-            for file in temperature_files {
-                let filename = file.unwrap().file_name().into_string().unwrap();
-                let re = Regex::new(r"temp[\d]+_input").unwrap();
-                if re.is_match(&filename) {
-                    count_sensors += 1;
+    pub fn temperatures() -> Result<Temperatures, Box<dyn std::error::Error>> {
+        // reconsider if this should really return an error if one of the sensors doesn't have a label f.e.
+        let paths = fs::read_dir(Get::path(SysProperty::Temperature))?;
+        let mut devices: Vec<DeviceSensors> = vec![];
+        let re = Regex::new(r"temp[\d]+_input")?;
+        for dir_entry in paths {
+            let mut sensor_count = 0;
+            let path = dir_entry?.path();
+            let mut dev = DeviceSensors::new();
+            let mut dev_temps: Vec<Sensor> = vec![];
+            dev.name = fs::read_to_string(path.join("name"))?.trim().to_string();
+            for temp_file in fs::read_dir(&path)? {
+                if re.is_match(&temp_file?.path().to_str().unwrap()) {
+                    sensor_count += 1;
                 }
             }
-            for i in 1..=count_sensors {
-                let mut tmp = Temperature::new();
-                match fs::read_to_string(dev_path.join(format!("temp{}_label", i))) {
-                    Ok(label) => tmp.name = label.trim().to_string(),
-                    Err(_e) => tmp.name = format!("temp{}", i),
-                }
-                match fs::read_to_string(dev_path.join(format!("temp{}_input", i))) {
-                    Ok(temp) => {
-                        let t = temp.trim().parse::<f32>().unwrap();
-                        tmp.temp = t / 1000.;
-                    }
-                    Err(_e) => tmp.temp = 0.,
-                }
-                dev_temps.push(tmp);
+            for i in 1..=sensor_count {
+                let mut sensor = Sensor::new();
+                sensor.name = fs::read_to_string(path.join(format!("temp{}_label", i)))
+                    .unwrap_or("".to_string())
+                    .trim()
+                    .to_string();
+                sensor.temp = handle(
+                    fs::read_to_string(path.join(format!("temp{}_input", i)))?
+                        .trim()
+                        .parse::<f32>(),
+                ) / 1000.;
+                dev_temps.push(sensor);
             }
-            dev.temps = dev_temps;
+            dev.sensors = dev_temps;
             devices.push(dev);
         }
-        Temperatures { temps: devices }
+        Ok(Temperatures { devices: devices })
     }
 }
 
@@ -688,7 +622,7 @@ impl fmt::Display for NetworkDevices {
         for dev in &self.network_dev {
             s.push_str(&dev.to_string());
         }
-        write!(f, "│ NETWORK DEVICE: {}", s)
+        write!(f, "\n│ NETWORK DEVICE: {}", s)
     }
 }
 impl fmt::Display for NetworkDevice {
@@ -717,7 +651,7 @@ impl fmt::Display for Storages {
         for dev in &self.storage_dev {
             s.push_str(&dev.to_string());
         }
-        write!(f, "│ STORAGE: {}", s)
+        write!(f, "\n│ STORAGE: {}", s)
     }
 }
 impl fmt::Display for Storage {
@@ -769,7 +703,7 @@ impl fmt::Display for VolGroups {
         for dev in &self.vgs {
             s.push_str(&dev.to_string());
         }
-        write!(f, "│ VOLUME GROUPS: {}", s)
+        write!(f, "\n│ VOLUME GROUPS: {}", s)
     }
 }
 impl fmt::Display for VolGroup {
@@ -819,16 +753,16 @@ impl fmt::Display for LogVolume {
 impl fmt::Display for Temperatures {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut s = String::new();
-        for dev in &self.temps {
+        for dev in &self.devices {
             s.push_str(&dev.to_string());
         }
-        write!(f, "│ TEMPERATURES: {}", s)
+        write!(f, "\n│ TEMPERATURES: {}", s)
     }
 }
-impl fmt::Display for DeviceTemperatures {
+impl fmt::Display for DeviceSensors {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut temps = "".to_string();
-        for temp in &self.temps {
+        for temp in &self.sensors {
             temps.push_str(&temp.to_string());
         }
         write!(
@@ -841,12 +775,11 @@ impl fmt::Display for DeviceTemperatures {
         )
     }
 }
-impl fmt::Display for Temperature {
+impl fmt::Display for Sensor {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "
-│   │         ├─{} {}°C",
+            "\n│   │         ├─{} {}°C",
             self.name.green().bold(),
             self.temp
         )
