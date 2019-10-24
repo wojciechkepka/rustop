@@ -160,34 +160,40 @@ impl LogVolume {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Temperature {
+pub struct Sensor {
     name: String,
     temp: f32,
 }
-impl Temperature {
+impl Sensor {
     #[allow(dead_code)]
-    fn new() -> Temperature {
-        Temperature {
+    fn new() -> Sensor {
+        Sensor {
             name: "".to_string(),
             temp: 0.,
         }
     }
 }
 
+type Sensors = Vec<Sensor>;
 #[derive(Serialize, Deserialize, Debug, Default)]
-pub struct DeviceTemperatures {
+pub struct DeviceSensors {
     name: String,
-    temps: Vec<Temperature>,
+    sensors: Sensors,
 }
-impl DeviceTemperatures {
+impl DeviceSensors {
     #[allow(dead_code)]
-    fn new() -> DeviceTemperatures {
-        DeviceTemperatures {
+    fn new() -> DeviceSensors {
+        DeviceSensors {
             name: "".to_string(),
-            temps: vec![],
+            sensors: vec![],
         }
     }
 }
+#[derive(Serialize, Deserialize, Debug, Default)]
+pub struct Temperatures {
+    pub devices: Vec<DeviceSensors>,
+}
+
 type Partitions = Vec<Partition>;
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct NetworkDevices {
@@ -200,10 +206,6 @@ pub struct Storages {
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct VolGroups {
     pub vgs: Vec<VolGroup>,
-}
-#[derive(Serialize, Deserialize, Debug, Default)]
-pub struct Temperatures {
-    pub temps: Vec<DeviceTemperatures>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -263,7 +265,7 @@ impl Default for PcInfo {
             },
             vgs: VolGroups { vgs: vec![] },
             graphics_card: "".to_string(),
-            temps: Temperatures { temps: vec![] },
+            temps: Temperatures { devices: vec![] },
         }
     }
 }
@@ -545,13 +547,13 @@ impl Get {
     pub fn temperatures() -> Result<Temperatures, Box<dyn std::error::Error>> {
         // reconsider if this should really return an error if one of the sensors doesn't have a label f.e.
         let paths = fs::read_dir(Get::path(SysProperty::Temperature))?;
-        let mut devices: Vec<DeviceTemperatures> = vec![];
+        let mut devices: Vec<DeviceSensors> = vec![];
         let re = Regex::new(r"temp[\d]+_input")?;
         for dir_entry in paths {
             let mut sensor_count = 0;
             let path = dir_entry?.path();
-            let mut dev = DeviceTemperatures::new();
-            let mut dev_temps: Vec<Temperature> = vec![];
+            let mut dev = DeviceSensors::new();
+            let mut dev_temps: Vec<Sensor> = vec![];
             dev.name = fs::read_to_string(path.join("name"))?.trim().to_string();
             for temp_file in fs::read_dir(&path)? {
                 if re.is_match(&temp_file?.path().to_str().unwrap()) {
@@ -559,7 +561,7 @@ impl Get {
                 }
             }
             for i in 1..=sensor_count {
-                let mut sensor = Temperature::new();
+                let mut sensor = Sensor::new();
                 sensor.name = fs::read_to_string(path.join(format!("temp{}_label", i)))
                     .unwrap_or("".to_string())
                     .trim()
@@ -571,10 +573,10 @@ impl Get {
                 ) / 1000.;
                 dev_temps.push(sensor);
             }
-            dev.temps = dev_temps;
+            dev.sensors = dev_temps;
             devices.push(dev);
         }
-        Ok(Temperatures { temps: devices })
+        Ok(Temperatures { devices: devices })
     }
 }
 
@@ -751,16 +753,16 @@ impl fmt::Display for LogVolume {
 impl fmt::Display for Temperatures {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut s = String::new();
-        for dev in &self.temps {
+        for dev in &self.devices {
             s.push_str(&dev.to_string());
         }
         write!(f, "\n│ TEMPERATURES: {}", s)
     }
 }
-impl fmt::Display for DeviceTemperatures {
+impl fmt::Display for DeviceSensors {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut temps = "".to_string();
-        for temp in &self.temps {
+        for temp in &self.sensors {
             temps.push_str(&temp.to_string());
         }
         write!(
@@ -773,7 +775,7 @@ impl fmt::Display for DeviceTemperatures {
         )
     }
 }
-impl fmt::Display for Temperature {
+impl fmt::Display for Sensor {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
