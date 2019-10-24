@@ -394,6 +394,7 @@ impl Get {
         let mut partitions = vec![];
         let output = fs::read_to_string(Get::path(SysProperty::StorDev))?;
         let re = Regex::new(r"(?m)^\s*(\d*)\s*(\d*)\s*(\d*)\s(\w*\d+)$")?;
+        let re2 = Regex::new(r"/dev/(\w*)\s(\S*)\s(\S*)")?;
         for storage_dev in re
             .captures_iter(&output)
             .filter(|x| x[4].starts_with(stor_name))
@@ -402,8 +403,7 @@ impl Get {
             let partition_name = &storage_dev[4];
 
             let output2 = fs::read_to_string(Get::path(SysProperty::StorMounts))?;
-            let re = Regex::new(r"/dev/(\w*)\s(\S*)\s(\S*)")?;
-            for found_partition in re.captures_iter(&output2) {
+            for found_partition in re2.captures_iter(&output2) {
                 if &found_partition[1] == partition_name {
                     let mountpoint = &found_partition[2];
                     let filesystem = &found_partition[3];
@@ -491,12 +491,12 @@ impl Get {
 
             let output = fs::read_to_string("/proc/net/fib_trie")?;
             let file = output.split('\n').collect::<Vec<&str>>();
+            let re = Regex::new(r"\|--\s+(.*)")?;
             let mut found = false;
             for (i, line) in (&file).iter().enumerate() {
                 if line.to_string().contains(&iface_dest) {
                     found = true;
                 } else if found && line.to_string().contains("/32 host LOCAL") {
-                    let re = Regex::new(r"\|--\s+(.*)")?;
                     ip_addr = match re.captures(&file[i - 1]) {
                         Some(n) => Ipv4Addr::from_str(&n[1])?,
                         None => Ipv4Addr::UNSPECIFIED,
