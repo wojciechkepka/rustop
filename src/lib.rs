@@ -395,6 +395,8 @@ impl Get {
         let output = fs::read_to_string(Get::path(SysProperty::StorDev))?;
         let re = Regex::new(r"(?m)^\s*(\d*)\s*(\d*)\s*(\d*)\s(\w*\d+)$")?;
         let re2 = Regex::new(r"/dev/(\w*)\s(\S*)\s(\S*)")?;
+        let output2 = fs::read_to_string(Get::path(SysProperty::StorMounts))?;
+
         for storage_dev in re
             .captures_iter(&output)
             .filter(|x| x[4].starts_with(stor_name))
@@ -402,13 +404,10 @@ impl Get {
             let mut partition = Partition::new();
             let partition_name = &storage_dev[4];
 
-            let output2 = fs::read_to_string(Get::path(SysProperty::StorMounts))?;
             for found_partition in re2.captures_iter(&output2) {
                 if &found_partition[1] == partition_name {
-                    let mountpoint = &found_partition[2];
-                    let filesystem = &found_partition[3];
-                    partition.mountpoint = mountpoint.to_string();
-                    partition.filesystem = filesystem.to_string();
+                    partition.mountpoint = found_partition[2].to_string();
+                    partition.filesystem = found_partition[3].to_string();
                     break;
                 } else {
                     partition.mountpoint = "".to_string();
