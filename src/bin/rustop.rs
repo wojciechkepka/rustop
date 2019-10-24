@@ -2,12 +2,11 @@ extern crate rustop_rs;
 use clap::{App, Arg, SubCommand};
 use rustop_rs::*;
 use serde_json::json;
-use std::error::Error;
 use std::fs;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args =
         App::new("rustop")
-            .version("0.4.2")
+            .version("0.4.5")
             .about("Gathers all important information about your system")
             .arg(
                 Arg::with_name("file")

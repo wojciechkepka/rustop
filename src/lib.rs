@@ -4,7 +4,6 @@ use glob::glob;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::default::Default;
-use std::error::Error;
 use std::fmt;
 use std::fmt::{Debug, Display};
 use std::fs;
@@ -197,11 +196,11 @@ pub struct Temperatures {
 type Partitions = Vec<Partition>;
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct NetworkDevices {
-    pub network_dev: Vec<NetworkDevice>,
+    pub devices: Vec<NetworkDevice>,
 }
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct Storages {
-    pub storage_dev: Vec<Storage>,
+    pub devices: Vec<Storage>,
 }
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct VolGroups {
@@ -257,12 +256,8 @@ impl Default for PcInfo {
             free_memory: 0,
             swap: 0,
             free_swap: 0,
-            network_dev: NetworkDevices {
-                network_dev: vec![],
-            },
-            storage_dev: Storages {
-                storage_dev: vec![],
-            },
+            network_dev: NetworkDevices { devices: vec![] },
+            storage_dev: Storages { devices: vec![] },
             vgs: VolGroups { vgs: vec![] },
             graphics_card: "".to_string(),
             temps: Temperatures { devices: vec![] },
@@ -359,9 +354,7 @@ impl Get {
                 ipv6_addr: Get::ipv6_addr(&network_dev[1])?,
             });
         }
-        Ok(NetworkDevices {
-            network_dev: devices,
-        })
+        Ok(NetworkDevices { devices })
     }
 
     pub fn storage_devices() -> Result<Storages, Box<dyn std::error::Error>> {
@@ -394,9 +387,7 @@ impl Get {
             });
         }
 
-        Ok(Storages {
-            storage_dev: devices,
-        })
+        Ok(Storages { devices })
     }
 
     fn storage_partitions(stor_name: &str) -> Result<Partitions, Box<dyn std::error::Error>> {
@@ -434,7 +425,7 @@ impl Get {
     }
 
     pub fn vgs() -> Result<VolGroups, Box<dyn std::error::Error>> {
-        let mut vgs_vec: Vec<VolGroup> = vec![];
+        let mut vgs: Vec<VolGroup> = vec![];
         let output = fs::read_to_string(Get::path(SysProperty::StorDev))?;
         let re = Regex::new(r"(?m)\d*\s*dm-")?;
         if re.captures(&output).is_some() {
@@ -442,7 +433,7 @@ impl Get {
             let out = str::from_utf8(&cmd.stdout)?;
             let re = Regex::new(r"(?m)VG Name\s*(.*)\n.*\n\s*Format\s*(.*)$(?:\n.*){3}\s*VG Status\s*(.*)$(?:\n.*){6}$\s*VG Size\s*(\d*)")?;
             for vg in re.captures_iter(&out) {
-                vgs_vec.push(VolGroup {
+                vgs.push(VolGroup {
                     name: vg[1].to_string(),
                     format: vg[2].to_string(),
                     status: vg[3].to_string(),
@@ -452,7 +443,7 @@ impl Get {
             }
         }
 
-        Ok(VolGroups { vgs: vgs_vec })
+        Ok(VolGroups { vgs })
     }
 
     fn lvms(vg_name: String) -> Result<Vec<LogVolume>, Box<dyn std::error::Error>> {
@@ -576,7 +567,7 @@ impl Get {
             dev.sensors = dev_temps;
             devices.push(dev);
         }
-        Ok(Temperatures { devices: devices })
+        Ok(Temperatures { devices })
     }
 }
 
@@ -619,7 +610,7 @@ impl fmt::Display for PcInfo {
 impl fmt::Display for NetworkDevices {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut s = String::new();
-        for dev in &self.network_dev {
+        for dev in &self.devices {
             s.push_str(&dev.to_string());
         }
         write!(f, "\n│ NETWORK DEVICE: {}", s)
@@ -648,7 +639,7 @@ impl fmt::Display for NetworkDevice {
 impl fmt::Display for Storages {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut s = String::new();
-        for dev in &self.storage_dev {
+        for dev in &self.devices {
             s.push_str(&dev.to_string());
         }
         write!(f, "\n│ STORAGE: {}", s)
