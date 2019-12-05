@@ -1,5 +1,4 @@
 extern crate rustop_rs;
-use async_std::task::spawn;
 use rustop_rs::*;
 use serde_json::json;
 use std::fs;

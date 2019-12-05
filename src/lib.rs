@@ -1,6 +1,5 @@
 mod utils;
 use colored::*;
-use glob::glob;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::default::Default;
