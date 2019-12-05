@@ -225,22 +225,22 @@ pub struct PcInfo {
     pub temps: Temperatures,
 }
 impl PcInfo {
-    pub fn new() -> PcInfo {
+    pub async fn new() -> PcInfo {
         PcInfo {
-            hostname: handle(Get::sysproperty(SysProperty::Hostname)),
-            kernel_version: handle(Get::sysproperty(SysProperty::OsRelease)),
-            uptime: handle(Get::uptime()),
-            cpu: handle(Get::cpu_info()),
-            cpu_clock: handle(Get::cpu_clock()),
-            memory: handle(Get::mem(Memory::MemTotal)),
-            free_memory: handle(Get::mem(Memory::MemFree)),
-            swap: handle(Get::mem(Memory::SwapTotal)),
-            free_swap: handle(Get::mem(Memory::SwapFree)),
-            network_dev: handle(Get::network_dev()),
-            storage_dev: handle(Get::storage_devices()),
-            vgs: handle(Get::vgs()),
-            graphics_card: handle(Get::graphics_card()),
-            temps: handle(Get::temperatures()),
+            hostname: handle(Get::sysproperty(SysProperty::Hostname).await),
+            kernel_version: handle(Get::sysproperty(SysProperty::OsRelease).await),
+            uptime: handle(Get::uptime().await),
+            cpu: handle(Get::cpu_info().await),
+            cpu_clock: handle(Get::cpu_clock().await),
+            memory: handle(Get::mem(Memory::MemTotal).await),
+            free_memory: handle(Get::mem(Memory::MemFree).await),
+            swap: handle(Get::mem(Memory::SwapTotal).await),
+            free_swap: handle(Get::mem(Memory::SwapFree).await),
+            network_dev: handle(Get::network_dev().await),
+            storage_dev: handle(Get::storage_devices().await),
+            vgs: handle(Get::vgs().await),
+            graphics_card: handle(Get::graphics_card().await),
+            temps: handle(Get::temperatures().await),
         }
     }
 }
@@ -265,6 +265,16 @@ impl Default for PcInfo {
     }
 }
 
+pub struct Gett;
+impl Gett {
+    pub fn uptime() -> Result<f64, std::io::Error> {
+        let output = fs::read_to_string(Get::path(SysProperty::Uptime))?;
+        Ok(handle(
+            output.split(' ').collect::<Vec<&str>>()[0].parse::<f64>(),
+        ))
+    }
+}
+
 #[derive(Debug)]
 pub struct Get;
 impl Get {
@@ -283,7 +293,7 @@ impl Get {
         }
     }
 
-    pub fn sysproperty(property: SysProperty) -> Result<String, std::io::Error> {
+    pub async fn sysproperty(property: SysProperty) -> Result<String, std::io::Error> {
         let path = match property {
             SysProperty::OsRelease => Get::path(SysProperty::OsRelease),
             SysProperty::Hostname => Get::path(SysProperty::Hostname),
@@ -292,14 +302,14 @@ impl Get {
         Ok(String::from(fs::read_to_string(path)?.trim_end()))
     }
 
-    pub fn uptime() -> Result<f64, std::io::Error> {
+    pub async fn uptime() -> Result<f64, std::io::Error> {
         let output = fs::read_to_string(Get::path(SysProperty::Uptime))?;
         Ok(handle(
             output.split(' ').collect::<Vec<&str>>()[0].parse::<f64>(),
         ))
     }
 
-    pub fn cpu_info() -> Result<String, Box<dyn std::error::Error>> {
+    pub async fn cpu_info() -> Result<String, Box<dyn std::error::Error>> {
         let output = fs::read_to_string(Get::path(SysProperty::CpuInfo))?;
         let re = Regex::new(r"model name\s*: (.*)")?;
         Ok(re
@@ -307,7 +317,7 @@ impl Get {
             .map_or("".to_string(), |x| x[1].to_string()))
     }
 
-    pub fn mem(target: Memory) -> Result<u64, Box<dyn std::error::Error>> {
+    pub async fn mem(target: Memory) -> Result<u64, Box<dyn std::error::Error>> {
         let output = fs::read_to_string(Get::path(SysProperty::Mem))?;
         let re = match target {
             Memory::SwapFree => Regex::new(r"SwapFree:\s*(\d*)")?,
@@ -321,7 +331,7 @@ impl Get {
         }
     }
 
-    pub fn total_clock_speed() -> Result<f32, Box<dyn std::error::Error>> {
+    pub async fn total_clock_speed() -> Result<f32, Box<dyn std::error::Error>> {
         let output = fs::read_to_string(Get::path(SysProperty::CpuInfo))?;
         let re = Regex::new(r"cpu MHz\s*: (.*)")?;
         Ok(re
@@ -330,17 +340,17 @@ impl Get {
             .sum::<f32>())
     }
 
-    pub fn total_cpu_cores() -> Result<usize, std::io::Error> {
+    pub async fn total_cpu_cores() -> Result<usize, std::io::Error> {
         Ok(fs::read_to_string(Get::path(SysProperty::CpuInfo))?
             .rmatches("cpu MHz")
             .count())
     }
 
-    pub fn cpu_clock() -> Result<f32, Box<dyn std::error::Error>> {
-        Ok(Get::total_clock_speed()? / Get::total_cpu_cores()? as f32)
+    pub async fn cpu_clock() -> Result<f32, Box<dyn std::error::Error>> {
+        Ok(Get::total_clock_speed().await? / Get::total_cpu_cores().await? as f32)
     }
 
-    pub fn network_dev() -> Result<NetworkDevices, Box<dyn std::error::Error>> {
+    pub async fn network_dev() -> Result<NetworkDevices, Box<dyn std::error::Error>> {
         let mut devices = vec![];
         let output = fs::read_to_string(Get::path(SysProperty::NetDev))?;
         let re =
@@ -350,24 +360,15 @@ impl Get {
                 name: network_dev[1].to_string(),
                 received_bytes: handle(network_dev[2].parse::<u64>()),
                 transfered_bytes: handle(network_dev[3].parse::<u64>()),
-                ipv4_addr: Get::ipv4_addr(&network_dev[1])?,
-                ipv6_addr: Get::ipv6_addr(&network_dev[1])?,
+                ipv4_addr: Get::ipv4_addr(&network_dev[1]).await?,
+                ipv6_addr: Get::ipv6_addr(&network_dev[1]).await?,
             });
         }
         Ok(NetworkDevices { devices })
     }
 
-    pub fn storage_devices() -> Result<Storages, Box<dyn std::error::Error>> {
-        let mut devices = vec![];
-        let mut sys_block_devs = vec![];
-        for entry in glob(Get::path(SysProperty::SysBlockDev).to_str().unwrap())? {
-            if let Ok(path) = entry {
-                let name = path.strip_prefix("/sys/block/").unwrap();
-                if let Some(str_name) = name.to_str() {
-                    sys_block_devs.push(str_name.to_string())
-                }
-            }
-        }
+    pub async fn storage_devices() -> Result<Storages, Box<dyn std::error::Error>> {
+        let mut devices = Vec::new();
 
         let output = fs::read_to_string(Get::path(SysProperty::StorDev))?;
         let re = Regex::new(r"(?m)^\s*(\d*)\s*(\d*)\s*(\d*)\s([\w\d]*)$")?;
@@ -383,14 +384,14 @@ impl Get {
                 minor: handle(storage_dev[2].parse::<u16>()),
                 size: handle(storage_dev[3].parse::<u64>()) * 1024,
                 name: storage_dev[4].to_string(),
-                partitions: handle(Get::storage_partitions(&storage_dev[4])),
+                partitions: handle(Get::storage_partitions(&storage_dev[4]).await),
             });
         }
 
         Ok(Storages { devices })
     }
 
-    fn storage_partitions(stor_name: &str) -> Result<Partitions, Box<dyn std::error::Error>> {
+    async fn storage_partitions(stor_name: &str) -> Result<Partitions, Box<dyn std::error::Error>> {
         let mut partitions = vec![];
         let output = fs::read_to_string(Get::path(SysProperty::StorDev))?;
         let re = Regex::new(r"(?m)^\s*(\d*)\s*(\d*)\s*(\d*)\s(\w*\d+)$")?;
@@ -423,21 +424,23 @@ impl Get {
         Ok(partitions)
     }
 
-    pub fn vgs() -> Result<VolGroups, Box<dyn std::error::Error>> {
+    pub async fn vgs() -> Result<VolGroups, Box<dyn std::error::Error>> {
         let mut vgs: Vec<VolGroup> = vec![];
         let output = fs::read_to_string(Get::path(SysProperty::StorDev))?;
         let re = Regex::new(r"(?m)\d*\s*dm-")?;
         if re.captures(&output).is_some() {
             let cmd = Command::new("vgdisplay").arg("--units").arg("b").output()?;
             let out = str::from_utf8(&cmd.stdout)?;
-            let re = Regex::new(r"(?m)VG Name\s*(.*)\n.*\n\s*Format\s*(.*)$(?:\n.*){3}\s*VG Status\s*(.*)$(?:\n.*){6}$\s*VG Size\s*(\d*)")?;
+            let re = Regex::new(
+                r"(?m)VG Name\s*(.*)\n.*\n\s*Format\s*(.*)$(?:\n.*){3}\s*VG Status\s*(.*)$(?:\n.*){6}$\s*VG Size\s*(\d*)",
+            )?;
             for vg in re.captures_iter(&out) {
                 vgs.push(VolGroup {
                     name: vg[1].to_string(),
                     format: vg[2].to_string(),
                     status: vg[3].to_string(),
                     size: handle(vg[4].parse::<u64>()),
-                    lvms: handle(Get::lvms(vg[1].to_string())),
+                    lvms: handle(Get::lvms(vg[1].to_string()).await),
                 })
             }
         }
@@ -445,11 +448,13 @@ impl Get {
         Ok(VolGroups { vgs })
     }
 
-    fn lvms(vg_name: String) -> Result<Vec<LogVolume>, Box<dyn std::error::Error>> {
+    async fn lvms(vg_name: String) -> Result<Vec<LogVolume>, Box<dyn std::error::Error>> {
         let mut lvms_vec: Vec<LogVolume> = vec![];
         let cmd = Command::new("lvdisplay").arg("--units").arg("b").output()?;
         let out = str::from_utf8(&cmd.stdout)?;
-        let re = Regex::new(r"(?m)LV Path\s*(.*)\n\s*LV Name\s*(.*)$\s*VG Name\s*(.*)$(?:\n.*){3}$\s*LV Status\s*(.*)\n.*$\n\s*LV Size\s*(\d*).*$(?:\n.*){5}\s*Block device\s*(\d*):(\d*)$")?;
+        let re = Regex::new(
+            r"(?m)LV Path\s*(.*)\n\s*LV Name\s*(.*)$\s*VG Name\s*(.*)$(?:\n.*){3}$\s*LV Status\s*(.*)\n.*$\n\s*LV Size\s*(\d*).*$(?:\n.*){5}\s*Block device\s*(\d*):(\d*)$",
+        )?;
         for lvm in re.captures_iter(&out).filter(|lvm| lvm[3] == vg_name) {
             lvms_vec.push(LogVolume {
                 name: lvm[2].to_string(),
@@ -465,7 +470,7 @@ impl Get {
         Ok(lvms_vec)
     }
 
-    pub fn graphics_card() -> Result<String, Box<dyn std::error::Error>> {
+    pub async fn graphics_card() -> Result<String, Box<dyn std::error::Error>> {
         let cmd = Command::new("lspci").output()?;
         let out = str::from_utf8(&cmd.stdout)?;
         let re = Regex::new(r"(?m)VGA compatible controller:\s*(.*)$")?;
@@ -474,7 +479,7 @@ impl Get {
             .map_or("".to_string(), |vga| vga[1].to_string()))
     }
 
-    fn ipv4_addr(interface_name: &str) -> Result<Ipv4Addr, Box<dyn std::error::Error>> {
+    async fn ipv4_addr(interface_name: &str) -> Result<Ipv4Addr, Box<dyn std::error::Error>> {
         let mut iface_dest = "".to_string();
         let mut ip_addr = Ipv4Addr::UNSPECIFIED;
         if interface_name == "lo" {
@@ -507,7 +512,7 @@ impl Get {
         }
     }
 
-    fn ipv6_addr(interface_name: &str) -> Result<Ipv6Addr, Box<dyn std::error::Error>> {
+    async fn ipv6_addr(interface_name: &str) -> Result<Ipv6Addr, Box<dyn std::error::Error>> {
         let mut ip_addr = Ipv6Addr::UNSPECIFIED;
         if interface_name == "lo" {
             Ok(Ipv6Addr::LOCALHOST)
@@ -534,7 +539,7 @@ impl Get {
         }
     }
 
-    pub fn temperatures() -> Result<Temperatures, Box<dyn std::error::Error>> {
+    pub async fn temperatures() -> Result<Temperatures, Box<dyn std::error::Error>> {
         // reconsider if this should really return an error if one of the sensors doesn't have a label f.e.
         let paths = fs::read_dir(Get::path(SysProperty::Temperature))?;
         let mut devices: Vec<DeviceSensors> = vec![];

@@ -1,4 +1,5 @@
 extern crate rustop_rs;
+use async_std::task::spawn;
 use rustop_rs::*;
 use serde_json::json;
 use std::fs;
@@ -51,36 +52,37 @@ enum OptSubcommands {
     },
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+#[async_std::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let opt = Opt::from_args();
 
     if let Some(_x) = opt.cmd {
         match _x {
             OptSubcommands::Get { property: n } => match &n[..] {
-                "hostname" => println!("{}", Get::sysproperty(SysProperty::Hostname)?),
-                "kernel" => println!("{}", Get::sysproperty(SysProperty::OsRelease)?),
-                "uptime" => println!("{}", Get::uptime()?),
-                "cpu" => println!("{}", Get::cpu_info()?),
-                "cpuclock" => println!("{}", Get::cpu_clock()?),
-                "memory" => println!("{}", Get::mem(Memory::MemTotal)?),
-                "fmemory" => println!("{}", Get::mem(Memory::MemFree)?),
-                "swap" => println!("{}", Get::mem(Memory::SwapTotal)?),
-                "fswap" => println!("{}", Get::mem(Memory::SwapFree)?),
-                "network" => println!("{}", serde_json::to_string_pretty(&Get::network_dev()?)?),
+                "hostname" => println!("{}", Get::sysproperty(SysProperty::Hostname).await?),
+                "kernel" => println!("{}", Get::sysproperty(SysProperty::OsRelease).await?),
+                "uptime" => println!("{}", Get::uptime().await?),
+                "cpu" => println!("{}", Get::cpu_info().await?),
+                "cpuclock" => println!("{}", Get::cpu_clock().await?),
+                "memory" => println!("{}", Get::mem(Memory::MemTotal).await?),
+                "fmemory" => println!("{}", Get::mem(Memory::MemFree).await?),
+                "swap" => println!("{}", Get::mem(Memory::SwapTotal).await?),
+                "fswap" => println!("{}", Get::mem(Memory::SwapFree).await?),
+                "network" => println!("{}", serde_json::to_string_pretty(&Get::network_dev().await?)?),
                 "storage" => println!(
                     "{}",
-                    serde_json::to_string_pretty(&Get::storage_devices()?)?
+                    serde_json::to_string_pretty(&Get::storage_devices().await?)?
                 ),
-                "vgs" => println!("{}", serde_json::to_string_pretty(&Get::vgs()?)?),
-                "graphics" => println!("{}", Get::graphics_card()?),
+                "vgs" => println!("{}", serde_json::to_string_pretty(&Get::vgs().await?)?),
+                "graphics" => println!("{}", Get::graphics_card().await?),
                 "temperatures" => {
-                    println!("{}", serde_json::to_string_pretty(&Get::temperatures()?)?)
+                    println!("{}", serde_json::to_string_pretty(&Get::temperatures().await?)?)
                 }
                 _ => println!(),
             },
         }
     } else {
-        let p = PcInfo::new();
+        let p = PcInfo::new().await;
         let mut s = String::new();
         if opt.json || opt.prettyjson {
             if !opt.quiet {
