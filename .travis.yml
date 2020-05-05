@@ -1,0 +1,10 @@
+language: rust
+rust:
+  - stable
+script:
+  - rustup toolchain update --no-self-update stable
+  - rustup component add rustfmt clippy
+  - cargo fmt -- --check
+  - cargo clippy --all -- --D warnings
+  - cargo test --color=always
+  - cargo build
