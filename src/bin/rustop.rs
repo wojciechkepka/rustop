@@ -1,7 +1,7 @@
-use rustop::*;
+use anyhow::Result;
 use rustop::opt::*;
 use rustop::out::*;
-use anyhow::Result;
+use rustop::*;
 use std::fs;
 use structopt::StructOpt;
 
@@ -21,17 +21,21 @@ async fn main() -> Result<()> {
                 "fmemory" => println!("{}", Get::mem(Memory::MemFree).await?),
                 "swap" => println!("{}", Get::mem(Memory::SwapTotal).await?),
                 "fswap" => println!("{}", Get::mem(Memory::SwapFree).await?),
-                "network" => println!("{}", serde_json::to_string_pretty(&Get::network_dev().await?)?),
+                "network" => println!(
+                    "{}",
+                    serde_json::to_string_pretty(&Get::network_dev().await?)?
+                ),
                 "storage" => println!(
                     "{}",
                     serde_json::to_string_pretty(&Get::storage_devices().await?)?
                 ),
                 "vgs" => println!("{}", serde_json::to_string_pretty(&Get::vgs().await?)?),
                 "graphics" => println!("{}", Get::graphics_card().await?),
-                "temperatures" => {
-                    println!("{}", serde_json::to_string_pretty(&Get::temperatures().await?)?)
-                }
-                _ => println!("unsupported property")
+                "temperatures" => println!(
+                    "{}",
+                    serde_json::to_string_pretty(&Get::temperatures().await?)?
+                ),
+                _ => println!("unsupported property"),
             },
         }
     } else {
@@ -40,24 +44,22 @@ async fn main() -> Result<()> {
         if opt.json || opt.prettyjson {
             match json_out(&p, &opt) {
                 Ok(out) => s = out,
-                Err(e) => eprintln!("Failed to serialize data as json - {}", e)
+                Err(e) => eprintln!("Failed to serialize data as json - {}", e),
             }
         } else if opt.yaml {
             match yaml_out(&p, &opt) {
                 Ok(out) => s = out,
-                Err(e) => eprintln!("Failed to serialize data as yaml - {}", e)
+                Err(e) => eprintln!("Failed to serialize data as yaml - {}", e),
             }
         } else {
             s = out(&p, &opt);
         }
 
         match opt.file {
-            Some(f) => {
-                match fs::write(f, s) {
-                    Ok(_) => {}
-                    Err(e) => eprintln!("Failed to save output to file - {}", e)
-                }
-            }
+            Some(f) => match fs::write(f, s) {
+                Ok(_) => {}
+                Err(e) => eprintln!("Failed to save output to file - {}", e),
+            },
             None => {
                 println!("{}", s);
             }

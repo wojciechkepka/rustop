@@ -1,6 +1,6 @@
-mod utils;
-pub mod out;
 pub mod opt;
+pub mod out;
+mod utils;
 use anyhow::Result;
 use colored::*;
 use regex::Regex;
@@ -192,17 +192,17 @@ impl DeviceSensors {
 }
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct Temperatures {
-    pub devices: Vec<DeviceSensors>,
+    pub temp_devices: Vec<DeviceSensors>,
 }
 
 type Partitions = Vec<Partition>;
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct NetworkDevices {
-    pub devices: Vec<NetworkDevice>,
+    pub net_devices: Vec<NetworkDevice>,
 }
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct Storages {
-    pub devices: Vec<Storage>,
+    pub storage_devices: Vec<Storage>,
 }
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct VolGroups {
@@ -258,15 +258,20 @@ impl Default for PcInfo {
             free_memory: 0,
             swap: 0,
             free_swap: 0,
-            network_dev: NetworkDevices { devices: vec![] },
-            storage_dev: Storages { devices: vec![] },
+            network_dev: NetworkDevices {
+                net_devices: vec![],
+            },
+            storage_dev: Storages {
+                storage_devices: vec![],
+            },
             vgs: VolGroups { vgs: vec![] },
             graphics_card: "".to_string(),
-            temps: Temperatures { devices: vec![] },
+            temps: Temperatures {
+                temp_devices: vec![],
+            },
         }
     }
 }
-
 
 #[derive(Debug)]
 pub struct Get;
@@ -357,7 +362,9 @@ impl Get {
                 ipv6_addr: Get::ipv6_addr(&network_dev[1]).await?,
             });
         }
-        Ok(NetworkDevices { devices })
+        Ok(NetworkDevices {
+            net_devices: devices,
+        })
     }
 
     pub async fn storage_devices() -> Result<Storages> {
@@ -381,7 +388,9 @@ impl Get {
             });
         }
 
-        Ok(Storages { devices })
+        Ok(Storages {
+            storage_devices: devices,
+        })
     }
 
     async fn storage_partitions(stor_name: &str) -> Result<Partitions> {
@@ -564,7 +573,9 @@ impl Get {
             dev.sensors = dev_temps;
             devices.push(dev);
         }
-        Ok(Temperatures { devices })
+        Ok(Temperatures {
+            temp_devices: devices,
+        })
     }
 }
 
@@ -607,7 +618,7 @@ impl fmt::Display for PcInfo {
 impl fmt::Display for NetworkDevices {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut s = String::new();
-        for dev in &self.devices {
+        for dev in &self.net_devices {
             s.push_str(&dev.to_string());
         }
         write!(f, "\n│ NETWORK DEVICE: {}", s)
@@ -636,7 +647,7 @@ impl fmt::Display for NetworkDevice {
 impl fmt::Display for Storages {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut s = String::new();
-        for dev in &self.devices {
+        for dev in &self.storage_devices {
             s.push_str(&dev.to_string());
         }
         write!(f, "\n│ STORAGE: {}", s)
@@ -741,7 +752,7 @@ impl fmt::Display for LogVolume {
 impl fmt::Display for Temperatures {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut s = String::new();
-        for dev in &self.devices {
+        for dev in &self.temp_devices {
             s.push_str(&dev.to_string());
         }
         write!(f, "\n│ TEMPERATURES: {}", s)

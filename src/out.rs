@@ -1,10 +1,9 @@
-use super::*;
 use self::opt::Opt;
+use super::*;
 use serde_json::json;
 
-
 pub fn json_out(p: &PcInfo, opts: &Opt) -> Result<String> {
-    let mut out = String::new();  
+    let mut out = String::new();
     if !opts.quiet {
         if opts.prettyjson {
             out.push_str(&serde_json::to_string_pretty(&p)?);
@@ -35,7 +34,7 @@ pub fn json_out(p: &PcInfo, opts: &Opt) -> Result<String> {
 }
 
 pub fn yaml_out(p: &PcInfo, opts: &Opt) -> Result<String> {
-    let mut out = String::new(); 
+    let mut out = String::new();
     if !opts.quiet {
         out.push_str(&serde_yaml::to_string(&p)?);
     } else {
