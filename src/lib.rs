@@ -1,5 +1,5 @@
 mod utils;
-use failure::Error;
+use anyhow::Result;
 use colored::*;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -284,7 +284,7 @@ impl Get {
         }
     }
 
-    pub async fn sysproperty(property: SysProperty) -> Result<String, Error> {
+    pub async fn sysproperty(property: SysProperty) -> Result<String> {
         let path = match property {
             SysProperty::OsRelease => Get::path(SysProperty::OsRelease),
             SysProperty::Hostname => Get::path(SysProperty::Hostname),
@@ -293,14 +293,14 @@ impl Get {
         Ok(String::from(fs::read_to_string(path)?.trim_end()))
     }
 
-    pub async fn uptime() -> Result<f64, Error> {
+    pub async fn uptime() -> Result<f64> {
         let output = fs::read_to_string(Get::path(SysProperty::Uptime))?;
         Ok(handle(
             output.split(' ').collect::<Vec<&str>>()[0].parse::<f64>(),
         ))
     }
 
-    pub async fn cpu_info() -> Result<String, Error> {
+    pub async fn cpu_info() -> Result<String> {
         let output = fs::read_to_string(Get::path(SysProperty::CpuInfo))?;
         let re = Regex::new(r"model name\s*: (.*)")?;
         Ok(re
@@ -308,7 +308,7 @@ impl Get {
             .map_or("".to_string(), |x| x[1].to_string()))
     }
 
-    pub async fn mem(target: Memory) -> Result<u64, Error> {
+    pub async fn mem(target: Memory) -> Result<u64> {
         let output = fs::read_to_string(Get::path(SysProperty::Mem))?;
         let re = match target {
             Memory::SwapFree => Regex::new(r"SwapFree:\s*(\d*)")?,
@@ -322,7 +322,7 @@ impl Get {
         }
     }
 
-    pub async fn total_clock_speed() -> Result<f32, Error> {
+    pub async fn total_clock_speed() -> Result<f32> {
         let output = fs::read_to_string(Get::path(SysProperty::CpuInfo))?;
         let re = Regex::new(r"cpu MHz\s*: (.*)")?;
         Ok(re
@@ -331,17 +331,17 @@ impl Get {
             .sum::<f32>())
     }
 
-    pub async fn total_cpu_cores() -> Result<usize, Error> {
+    pub async fn total_cpu_cores() -> Result<usize> {
         Ok(fs::read_to_string(Get::path(SysProperty::CpuInfo))?
             .rmatches("cpu MHz")
             .count())
     }
 
-    pub async fn cpu_clock() -> Result<f32, Error> {
+    pub async fn cpu_clock() -> Result<f32> {
         Ok(Get::total_clock_speed().await? / Get::total_cpu_cores().await? as f32)
     }
 
-    pub async fn network_dev() -> Result<NetworkDevices, Error> {
+    pub async fn network_dev() -> Result<NetworkDevices> {
         let mut devices = vec![];
         let output = fs::read_to_string(Get::path(SysProperty::NetDev))?;
         let re =
@@ -358,7 +358,7 @@ impl Get {
         Ok(NetworkDevices { devices })
     }
 
-    pub async fn storage_devices() -> Result<Storages, Error> {
+    pub async fn storage_devices() -> Result<Storages> {
         let mut devices = Vec::new();
 
         let output = fs::read_to_string(Get::path(SysProperty::StorDev))?;
@@ -382,7 +382,7 @@ impl Get {
         Ok(Storages { devices })
     }
 
-    async fn storage_partitions(stor_name: &str) -> Result<Partitions, Error> {
+    async fn storage_partitions(stor_name: &str) -> Result<Partitions> {
         let mut partitions = vec![];
         let output = fs::read_to_string(Get::path(SysProperty::StorDev))?;
         let re = Regex::new(r"(?m)^\s*(\d*)\s*(\d*)\s*(\d*)\s(\w*\d+)$")?;
@@ -415,7 +415,7 @@ impl Get {
         Ok(partitions)
     }
 
-    pub async fn vgs() -> Result<VolGroups, Error> {
+    pub async fn vgs() -> Result<VolGroups> {
         let mut vgs: Vec<VolGroup> = vec![];
         let output = fs::read_to_string(Get::path(SysProperty::StorDev))?;
         let re = Regex::new(r"(?m)\d*\s*dm-")?;
@@ -439,7 +439,7 @@ impl Get {
         Ok(VolGroups { vgs })
     }
 
-    async fn lvms(vg_name: String) -> Result<Vec<LogVolume>, Error> {
+    async fn lvms(vg_name: String) -> Result<Vec<LogVolume>> {
         let mut lvms_vec: Vec<LogVolume> = vec![];
         let cmd = Command::new("lvdisplay").arg("--units").arg("b").output()?;
         let out = str::from_utf8(&cmd.stdout)?;
@@ -461,7 +461,7 @@ impl Get {
         Ok(lvms_vec)
     }
 
-    pub async fn graphics_card() -> Result<String, Error> {
+    pub async fn graphics_card() -> Result<String> {
         let cmd = Command::new("lspci").output()?;
         let out = str::from_utf8(&cmd.stdout)?;
         let re = Regex::new(r"(?m)VGA compatible controller:\s*(.*)$")?;
@@ -470,7 +470,7 @@ impl Get {
             .map_or("".to_string(), |vga| vga[1].to_string()))
     }
 
-    async fn ipv4_addr(interface_name: &str) -> Result<Ipv4Addr, Error> {
+    async fn ipv4_addr(interface_name: &str) -> Result<Ipv4Addr> {
         let mut iface_dest = "".to_string();
         let mut ip_addr = Ipv4Addr::UNSPECIFIED;
         if interface_name == "lo" {
@@ -503,7 +503,7 @@ impl Get {
         }
     }
 
-    async fn ipv6_addr(interface_name: &str) -> Result<Ipv6Addr, Error> {
+    async fn ipv6_addr(interface_name: &str) -> Result<Ipv6Addr> {
         let mut ip_addr = Ipv6Addr::UNSPECIFIED;
         if interface_name == "lo" {
             Ok(Ipv6Addr::LOCALHOST)
@@ -530,7 +530,7 @@ impl Get {
         }
     }
 
-    pub async fn temperatures() -> Result<Temperatures, Error> {
+    pub async fn temperatures() -> Result<Temperatures> {
         // reconsider if this should really return an error if one of the sensors doesn't have a label f.e.
         let paths = fs::read_dir(Get::path(SysProperty::Temperature))?;
         let mut devices: Vec<DeviceSensors> = vec![];

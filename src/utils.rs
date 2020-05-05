@@ -1,3 +1,5 @@
+use super::*;
+
 pub fn conv_p(total: u64, free: u64) -> u64 {
     match total {
         0 => 0,
@@ -48,7 +50,7 @@ pub fn conv_t(sec: f64) -> String {
     }
 }
 
-pub fn conv_hex_to_ip(hex_addr: &str) -> Result<String, std::num::ParseIntError> {
+pub fn conv_hex_to_ip(hex_addr: &str) -> Result<String> {
     if hex_addr.len() == 8 {
         Ok(format!(
             "{}.{}.{}.{}",

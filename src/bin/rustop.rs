@@ -1,8 +1,7 @@
-extern crate rustop_rs;
-use rustop_rs::*;
+use rustop::*;
+use anyhow::Result;
 use serde_json::json;
 use std::fs;
-use failure::Error;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -53,7 +52,7 @@ enum OptSubcommands {
 }
 
 #[async_std::main]
-async fn main() -> Result<(), Error> {
+async fn main() -> Result<()> {
     let opt = Opt::from_args();
 
     if let Some(_x) = opt.cmd {
