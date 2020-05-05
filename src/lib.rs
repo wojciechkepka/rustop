@@ -500,9 +500,9 @@ impl Get {
             let re = Regex::new(r"\|--\s+(.*)")?;
             let mut found = false;
             for (i, line) in (&file).iter().enumerate() {
-                if line.to_string().contains(&iface_dest) {
+                if (*line).to_string().contains(&iface_dest) {
                     found = true;
-                } else if found && line.to_string().contains("/32 host LOCAL") {
+                } else if found && (*line).to_string().contains("/32 host LOCAL") {
                     ip_addr = match re.captures(&file[i - 1]) {
                         Some(n) => Ipv4Addr::from_str(&n[1])?,
                         None => Ipv4Addr::UNSPECIFIED,
@@ -560,7 +560,7 @@ impl Get {
             for i in 1..=sensor_count {
                 let mut sensor = Sensor::new();
                 sensor.name = fs::read_to_string(path.join(format!("temp{}_label", i)))
-                    .unwrap_or("".to_string())
+                    .unwrap_or_else(|_| "".to_string())
                     .trim()
                     .to_string();
                 sensor.temp = handle(
