@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-pub const CPU_INFO: &'static str = "processor       : 0
+pub const CPU_INFO: &str = "processor       : 0
 vendor_id       : AuthenticAMD
 cpu family      : 23
 model           : 113
@@ -336,7 +336,7 @@ cache_alignment : 64
 address sizes   : 43 bits physical, 48 bits virtual
 power management: ts ttp tm hwpstate eff_freq_ro [13] [14]";
 
-pub const MEM_INFO: &'static str = "MemTotal:       16323196 kB
+pub const MEM_INFO: &str = "MemTotal:       16323196 kB
 MemFree:         9939996 kB
 MemAvailable:   12560252 kB
 Buffers:          157600 kB
@@ -388,11 +388,11 @@ DirectMap4k:      325424 kB
 DirectMap2M:     6944768 kB
 DirectMap1G:    10485760 kB";
 
-pub const ROUTE: &'static str = "Iface   Destination     Gateway         Flags   RefCnt  Use     Metric  Mask            MTU     Window  IRTT          
+pub const ROUTE: &str = "Iface   Destination     Gateway         Flags   RefCnt  Use     Metric  Mask            MTU     Window  IRTT          
 wlan0   00000000        0108A8C0        0003    0       0       304     00000000        0       0       0             
 wlan0   0008A8C0        00000000        0001    0       0       304     00FFFFFF        0       0       0";
 
-pub const FIB_TRIE: &'static str = "Main:
+pub const FIB_TRIE: &str = "Main:
   +-- 0.0.0.0/0 3 0 5
      |-- 0.0.0.0
         /0 universe UNICAST
@@ -437,4 +437,4 @@ Local:
            |-- 192.168.8.255
               /32 link BROADCAST";
 
-pub const UPTIME: &'static str = "52662.34 619766.90";
+pub const UPTIME: &str = "52662.34 619766.90";
