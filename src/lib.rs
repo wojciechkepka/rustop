@@ -302,46 +302,63 @@ impl Get {
 
     pub async fn uptime() -> Result<f64> {
         let output = fs::read_to_string(Get::path(SysProperty::Uptime))?;
-        Ok(handle(
-            output.split(' ').collect::<Vec<&str>>()[0].parse::<f64>(),
-        ))
+        Ok(Self::_uptime(&output))
+    }
+
+    fn _uptime(out: &str) -> f64 {
+        match out.split(' ').collect::<Vec<&str>>()[0].parse::<f64>() {
+            Ok(up) => up,
+            Err(_) => 0.0,
+        }
     }
 
     pub async fn cpu_info() -> Result<String> {
         let output = fs::read_to_string(Get::path(SysProperty::CpuInfo))?;
-        let re = Regex::new(r"model name\s*: (.*)")?;
-        Ok(re
-            .captures(&output)
-            .map_or("".to_string(), |x| x[1].to_string()))
+        Ok(Self::_cpu_info(&output))
+    }
+
+    fn _cpu_info(out: &str) -> String {
+        let re = Regex::new(r"model name\s*: (.*)").unwrap();
+        re.captures(&out)
+            .map_or("".to_string(), |x| x[1].to_string())
     }
 
     pub async fn mem(target: Memory) -> Result<u64> {
         let output = fs::read_to_string(Get::path(SysProperty::Mem))?;
+        Ok(Self::_mem(target, &output))
+    }
+    fn _mem(target: Memory, out: &str) -> u64 {
         let re = match target {
-            Memory::SwapFree => Regex::new(r"SwapFree:\s*(\d*)")?,
-            Memory::SwapTotal => Regex::new(r"SwapTotal:\s*(\d*)")?,
-            Memory::MemTotal => Regex::new(r"MemTotal:\s*(\d*)")?,
-            Memory::MemFree => Regex::new(r"MemFree:\s*(\d*)")?,
+            Memory::SwapFree => Regex::new(r"SwapFree:\s*(\d*)").unwrap(),
+            Memory::SwapTotal => Regex::new(r"SwapTotal:\s*(\d*)").unwrap(),
+            Memory::MemTotal => Regex::new(r"MemTotal:\s*(\d*)").unwrap(),
+            Memory::MemFree => Regex::new(r"MemFree:\s*(\d*)").unwrap(),
         };
-        match re.captures(&output).map(|m| handle(m[1].parse::<u64>())) {
-            Some(n) => Ok(n * 1024),
-            _ => Ok(0),
+        match re.captures(&out).map(|m| handle(m[1].parse::<u64>())) {
+            Some(n) => n * 1024,
+            _ => 0,
         }
     }
 
     pub async fn total_clock_speed() -> Result<f32> {
         let output = fs::read_to_string(Get::path(SysProperty::CpuInfo))?;
-        let re = Regex::new(r"cpu MHz\s*: (.*)")?;
-        Ok(re
-            .captures_iter(&output)
+        Ok(Self::_total_clock_speed(&output))
+    }
+
+    fn _total_clock_speed(out: &str) -> f32 {
+        let re = Regex::new(r"cpu MHz\s*: (.*)").unwrap();
+        re.captures_iter(&out)
             .map(|x| handle(x[1].parse::<f32>()))
-            .sum::<f32>())
+            .sum::<f32>()
     }
 
     pub async fn total_cpu_cores() -> Result<usize> {
-        Ok(fs::read_to_string(Get::path(SysProperty::CpuInfo))?
-            .rmatches("cpu MHz")
-            .count())
+        let output = fs::read_to_string(Get::path(SysProperty::CpuInfo))?;
+        Ok(Self::_total_cpu_cores(&output))
+    }
+
+    fn _total_cpu_cores(out: &str) -> usize {
+        out.rmatches("cpu MHz").count()
     }
 
     pub async fn cpu_clock() -> Result<f32> {
@@ -482,21 +499,25 @@ impl Get {
     }
 
     async fn ipv4_addr(interface_name: &str) -> Result<Ipv4Addr> {
+        let route = fs::read_to_string("/proc/net/route")?;
+        let fib_trie = fs::read_to_string("/proc/net/fib_trie")?;
+        Self::_ipv4_addr(&interface_name, &route, &fib_trie)
+    }
+
+    fn _ipv4_addr(interface_name: &str, route: &str, fib_trie: &str) -> Result<Ipv4Addr> {
         let mut iface_dest = "".to_string();
         let mut ip_addr = Ipv4Addr::UNSPECIFIED;
         if interface_name == "lo" {
             Ok(Ipv4Addr::LOCALHOST)
         } else {
-            let output = fs::read_to_string("/proc/net/route")?;
             let re = Regex::new(r"(?m)^([\d\w]*)\s*([\d\w]*)")?;
-            for dest in re.captures_iter(&output) {
+            for dest in re.captures_iter(&route) {
                 if &dest[1] == interface_name && &dest[2] != "00000000" {
                     iface_dest = utils::conv_hex_to_ip(&dest[2])?;
                 }
             }
 
-            let output = fs::read_to_string("/proc/net/fib_trie")?;
-            let file = output.split('\n').collect::<Vec<&str>>();
+            let file = fib_trie.split('\n').collect::<Vec<&str>>();
             let re = Regex::new(r"\|--\s+(.*)")?;
             let mut found = false;
             for (i, line) in (&file).iter().enumerate() {
