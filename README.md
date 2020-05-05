@@ -1,5 +1,6 @@
 # Rustop
-[![Travis CI](https://travis-ci.org/wojciechkepka/rustop.svg?branch=master)](https://travis-ci.org/wojciechkepka/rustop/builds)
+[![Travis CI](https://travis-ci.org/wojciechkepka/rustop.svg?branch=master)](https://travis-ci.org/wojciechkepka/rustop/builds)  
+
 All important information about your system in one place.
 ## Prerequisites
 - cargo
