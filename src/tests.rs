@@ -64,6 +64,169 @@ mod test {
             "NVIDIA Corporation GK106 [GeForce GTX 660] (rev a1)"
         )
     }
+    #[test]
+    fn gets_storage_partitions() {
+        let partitions = vec![
+            Partition {
+                name: "sdd1".to_string(),
+                major: 8,
+                minor: 49,
+                size: 524288000,
+                filesystem: "vfat".to_string(),
+                mountpoint: "/boot".to_string(),
+            },
+            Partition {
+                name: "sdd2".to_string(),
+                major: 8,
+                minor: 50,
+                size: 119508769792,
+                filesystem: "".to_string(),
+                mountpoint: "".to_string(),
+            },
+        ];
+        assert_eq!(
+            Get::_storage_partitions("sdd", &tests::STOR_DEV, &tests::STOR_MOUNTS),
+            partitions
+        )
+    }
+    #[test]
+    fn gets_storage_devices() {
+        let sdc_partitions = vec![Partition {
+            name: "sdc1".to_string(),
+            major: 8,
+            minor: 33,
+            size: 320070786048,
+            filesystem: "".to_string(),
+            mountpoint: "".to_string(),
+        }];
+        let sdd_partitions = vec![
+            Partition {
+                name: "sdd1".to_string(),
+                major: 8,
+                minor: 49,
+                size: 524288000,
+                filesystem: "vfat".to_string(),
+                mountpoint: "/boot".to_string(),
+            },
+            Partition {
+                name: "sdd2".to_string(),
+                major: 8,
+                minor: 50,
+                size: 119508769792,
+                filesystem: "".to_string(),
+                mountpoint: "".to_string(),
+            },
+        ];
+        let sde_partitions = vec![
+            Partition {
+                name: "sde1".to_string(),
+                major: 8,
+                minor: 65,
+                size: 209715200,
+                filesystem: "".to_string(),
+                mountpoint: "".to_string(),
+            },
+            Partition {
+                name: "sde2".to_string(),
+                major: 8,
+                minor: 66,
+                size: 99931389952,
+                filesystem: "".to_string(),
+                mountpoint: "".to_string(),
+            },
+            Partition {
+                name: "sde3".to_string(),
+                major: 8,
+                minor: 67,
+                size: 99932839936,
+                filesystem: "".to_string(),
+                mountpoint: "".to_string(),
+            },
+            Partition {
+                name: "sde4".to_string(),
+                major: 8,
+                minor: 68,
+                size: 299629670400,
+                filesystem: "".to_string(),
+                mountpoint: "".to_string(),
+            },
+        ];
+        let devices = vec![
+            Storage {
+                major: 8,
+                minor: 32,
+                size: 320071851008,
+                name: "sdc".to_string(),
+                partitions: sdc_partitions,
+            },
+            Storage {
+                major: 8,
+                minor: 48,
+                size: 120034123776,
+                name: "sdd".to_string(),
+                partitions: sdd_partitions,
+            },
+            Storage {
+                major: 8,
+                minor: 64,
+                size: 500107862016,
+                name: "sde".to_string(),
+                partitions: sde_partitions,
+            },
+        ];
+        let storages = Storages {
+            storage_devices: devices,
+        };
+        assert_eq!(
+            Get::_storage_devices(&tests::STOR_DEV, &tests::STOR_MOUNTS),
+            storages
+        );
+    }
+    #[test]
+    fn gets_network_devices() {
+        let net_dev = NetworkDevices {
+            net_devices: vec![
+                NetworkDevice {
+                    name: "lo".to_string(),
+                    received_bytes: 817348,
+                    transfered_bytes: 817348,
+                    ipv4_addr: Ipv4Addr::new(127, 0, 0, 1),
+                    ipv6_addr: Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1),
+                },
+                NetworkDevice {
+                    name: "enp8s0".to_string(),
+                    received_bytes: 0,
+                    transfered_bytes: 0,
+                    ipv4_addr: Ipv4Addr::new(0, 0, 0, 0),
+                    ipv6_addr: Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0),
+                },
+                NetworkDevice {
+                    name: "wlan0".to_string(),
+                    received_bytes: 1177144648,
+                    transfered_bytes: 59578768,
+                    ipv4_addr: Ipv4Addr::new(192, 168, 8, 201),
+                    ipv6_addr: Ipv6Addr::new(0xfe80, 0, 0, 0, 0xd81, 0x2a0d, 0x8467, 0xda1c),
+                },
+                NetworkDevice {
+                    name: "tun0".to_string(),
+                    received_bytes: 24156600,
+                    transfered_bytes: 3623219,
+                    ipv4_addr: Ipv4Addr::new(0, 0, 0, 0),
+                    ipv6_addr: Ipv6Addr::new(0xfe80, 0, 0, 0, 0xf17b, 0x7100, 0xb5a1, 0xf781),
+                },
+            ],
+        };
+        assert_eq!(
+            Get::_network_dev(
+                &tests::NET_DEV,
+                &tests::ROUTE,
+                &tests::FIB_TRIE,
+                &tests::IF_INET6
+            )
+            .unwrap(),
+            net_dev
+        )
+    }
 }
 
 pub const CPU_INFO: &str = "processor       : 0
@@ -512,3 +675,66 @@ fe80000000000000f17b7100b5a1f781 05 40 20 80     tun0
 
 pub const LSPCI: &str =
     "09:00.0 VGA compatible controller: NVIDIA Corporation GK106 [GeForce GTX 660] (rev a1)";
+
+pub const STOR_DEV: &str = "major minor  #blocks  name
+   8       32  312570167 sdc
+   8       33  312569127 sdc1
+   8       48  117220824 sdd
+   8       49     512000 sdd1
+   8       50  116707783 sdd2
+   8       64  488386584 sde
+   8       65     204800 sde1
+   8       66   97589248 sde2
+   8       67   97590664 sde3
+   8       68  292607100 sde4
+ 254        0  116699136 dm-0";
+
+pub const STOR_MOUNTS: &str = "proc /proc proc rw,nosuid,nodev,noexec,relatime 0 0
+sys /sys sysfs rw,nosuid,nodev,noexec,relatime 0 0
+dev /dev devtmpfs rw,nosuid,relatime,size=8149064k,nr_inodes=2037266,mode=755 0 0
+run /run tmpfs rw,nosuid,nodev,relatime,mode=755 0 0
+efivarfs /sys/firmware/efi/efivars efivarfs rw,nosuid,nodev,noexec,relatime 0 0
+/dev/mapper/vgmain-root / ext4 rw,relatime 0 0
+securityfs /sys/kernel/security securityfs rw,nosuid,nodev,noexec,relatime 0 0
+tmpfs /dev/shm tmpfs rw,nosuid,nodev 0 0
+devpts /dev/pts devpts rw,nosuid,noexec,relatime,gid=5,mode=620,ptmxmode=000 0 0
+tmpfs /sys/fs/cgroup tmpfs ro,nosuid,nodev,noexec,mode=755 0 0
+cgroup2 /sys/fs/cgroup/unified cgroup2 rw,nosuid,nodev,noexec,relatime,nsdelegate 0 0
+cgroup /sys/fs/cgroup/systemd cgroup rw,nosuid,nodev,noexec,relatime,xattr,name=systemd 0 0
+pstore /sys/fs/pstore pstore rw,nosuid,nodev,noexec,relatime 0 0
+none /sys/fs/bpf bpf rw,nosuid,nodev,noexec,relatime,mode=700 0 0
+cgroup /sys/fs/cgroup/cpuset cgroup rw,nosuid,nodev,noexec,relatime,cpuset 0 0
+cgroup /sys/fs/cgroup/freezer cgroup rw,nosuid,nodev,noexec,relatime,freezer 0 0
+cgroup /sys/fs/cgroup/blkio cgroup rw,nosuid,nodev,noexec,relatime,blkio 0 0
+cgroup /sys/fs/cgroup/cpu,cpuacct cgroup rw,nosuid,nodev,noexec,relatime,cpu,cpuacct 0 0
+cgroup /sys/fs/cgroup/net_cls,net_prio cgroup rw,nosuid,nodev,noexec,relatime,net_cls,net_prio 0 0
+cgroup /sys/fs/cgroup/devices cgroup rw,nosuid,nodev,noexec,relatime,devices 0 0
+cgroup /sys/fs/cgroup/rdma cgroup rw,nosuid,nodev,noexec,relatime,rdma 0 0
+cgroup /sys/fs/cgroup/memory cgroup rw,nosuid,nodev,noexec,relatime,memory 0 0
+cgroup /sys/fs/cgroup/perf_event cgroup rw,nosuid,nodev,noexec,relatime,perf_event 0 0
+cgroup /sys/fs/cgroup/pids cgroup rw,nosuid,nodev,noexec,relatime,pids 0 0
+cgroup /sys/fs/cgroup/hugetlb cgroup rw,nosuid,nodev,noexec,relatime,hugetlb 0 0
+systemd-1 /proc/sys/fs/binfmt_misc autofs rw,relatime,fd=29,pgrp=1,timeout=0,minproto=5,maxproto=5,direct,pipe_ino=420 0 0
+mqueue /dev/mqueue mqueue rw,nosuid,nodev,noexec,relatime 0 0
+hugetlbfs /dev/hugepages hugetlbfs rw,relatime,pagesize=2M 0 0
+debugfs /sys/kernel/debug debugfs rw,nosuid,nodev,noexec,relatime 0 0
+tracefs /sys/kernel/tracing tracefs rw,nosuid,nodev,noexec,relatime 0 0
+tmpfs /tmp tmpfs rw,nosuid,nodev 0 0
+configfs /sys/kernel/config configfs rw,nosuid,nodev,noexec,relatime 0 0
+/dev/sdd1 /boot vfat rw,relatime,fmask=0022,dmask=0022,codepage=437,iocharset=iso8859-1,shortname=mixed,utf8,errors=remount-ro 0 0
+dev /var/lib/dhcpcd/dev devtmpfs rw,nosuid,relatime,size=8149064k,nr_inodes=2037266,mode=755 0 0
+proc /var/lib/dhcpcd/proc proc rw,nosuid,nodev,noexec,relatime 0 0
+sys /var/lib/dhcpcd/sys sysfs rw,nosuid,nodev,noexec,relatime 0 0
+run /var/lib/dhcpcd/run/udev tmpfs rw,nosuid,nodev,relatime,mode=755 0 0
+run /var/lib/dhcpcd/run/systemd/journal tmpfs rw,nosuid,nodev,relatime,mode=755 0 0
+tmpfs /run/user/1000 tmpfs rw,nosuid,nodev,relatime,size=1632316k,mode=700,uid=1000,gid=1001 0 0
+gvfsd-fuse /run/user/1000/gvfs fuse.gvfsd-fuse rw,nosuid,nodev,relatime,user_id=1000,group_id=1001 0 0
+fusectl /sys/fs/fuse/connections fusectl rw,nosuid,nodev,noexec,relatime 0 0
+fusectl /var/lib/dhcpcd/sys/fs/fuse/connections fusectl rw,nosuid,nodev,noexec,relatime 0 0";
+
+pub const NET_DEV: &str = "Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+     lo:  817348    1992    0    0    0     0          0         0   817348    1992    0    0    0     0       0          0
+     enp8s0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+      wlan0: 1177144648  929250    0    0    0     0          0         0 59578768  534269    0    0    0     0       0          0
+        tun0: 24156600   41069    0    0    0     0          0         0  3623219   43984    0    0    0     0       0          0";
