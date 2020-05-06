@@ -3,7 +3,7 @@ pub mod opt;
 pub mod out;
 mod tests;
 mod utils;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::default::Default;
@@ -26,6 +26,7 @@ fn handle<T: Default, E: Display + Debug>(result: Result<T, E>) -> T {
     }
 }
 
+#[derive(Debug)]
 pub enum SysProperty {
     CpuInfo,
     Hostname,
@@ -38,6 +39,23 @@ pub enum SysProperty {
     SysBlockDev,
     Temperature,
 }
+impl SysProperty {
+    pub fn path(self) -> &'static Path {
+        match self {
+            SysProperty::Hostname => &Path::new("/proc/sys/kernel/hostname"),
+            SysProperty::OsRelease => &Path::new("/proc/sys/kernel/osrelease"),
+            SysProperty::Uptime => &Path::new("/proc/uptime"),
+            SysProperty::Mem => &Path::new("/proc/meminfo"),
+            SysProperty::NetDev => &Path::new("/proc/net/dev"),
+            SysProperty::StorDev => &Path::new("/proc/partitions"),
+            SysProperty::StorMounts => &Path::new("/proc/mounts"),
+            SysProperty::SysBlockDev => &Path::new("/sys/block/*"),
+            SysProperty::CpuInfo => &Path::new("/proc/cpuinfo"),
+            SysProperty::Temperature => &Path::new("/sys/class/hwmon"),
+        }
+    }
+}
+
 pub enum Memory {
     SwapTotal,
     SwapFree,
@@ -276,32 +294,18 @@ impl Default for PcInfo {
 #[derive(Debug)]
 pub struct Get;
 impl Get {
-    fn path(prop: SysProperty) -> &'static Path {
-        match prop {
-            SysProperty::Hostname => &Path::new("/proc/sys/kernel/hostname"),
-            SysProperty::OsRelease => &Path::new("/proc/sys/kernel/osrelease"),
-            SysProperty::Uptime => &Path::new("/proc/uptime"),
-            SysProperty::Mem => &Path::new("/proc/meminfo"),
-            SysProperty::NetDev => &Path::new("/proc/net/dev"),
-            SysProperty::StorDev => &Path::new("/proc/partitions"),
-            SysProperty::StorMounts => &Path::new("/proc/mounts"),
-            SysProperty::SysBlockDev => &Path::new("/sys/block/*"),
-            SysProperty::CpuInfo => &Path::new("/proc/cpuinfo"),
-            SysProperty::Temperature => &Path::new("/sys/class/hwmon"),
-        }
-    }
-
     pub async fn sysproperty(property: SysProperty) -> Result<String> {
         let path = match property {
-            SysProperty::OsRelease => Get::path(SysProperty::OsRelease),
-            SysProperty::Hostname => Get::path(SysProperty::Hostname),
-            _ => &Path::new(""),
+            // Use or-patterns when they become stable
+            p @ SysProperty::OsRelease => p.path(),
+            p @ SysProperty::Hostname => p.path(),
+            p => return Err(anyhow!("Invalid system property {:?}", p)),
         };
         Ok(String::from(fs::read_to_string(path)?.trim_end()))
     }
 
     pub async fn uptime() -> Result<f64> {
-        let output = fs::read_to_string(Get::path(SysProperty::Uptime))?;
+        let output = fs::read_to_string(SysProperty::Uptime.path())?;
         Ok(Self::_uptime(&output))
     }
 
@@ -313,7 +317,7 @@ impl Get {
     }
 
     pub async fn cpu_info() -> Result<String> {
-        let output = fs::read_to_string(Get::path(SysProperty::CpuInfo))?;
+        let output = fs::read_to_string(SysProperty::CpuInfo.path())?;
         Ok(Self::_cpu_info(&output))
     }
 
@@ -324,7 +328,7 @@ impl Get {
     }
 
     pub async fn mem(target: Memory) -> Result<u64> {
-        let output = fs::read_to_string(Get::path(SysProperty::Mem))?;
+        let output = fs::read_to_string(SysProperty::Mem.path())?;
         Ok(Self::_mem(target, &output))
     }
     pub(crate) fn _mem(target: Memory, out: &str) -> u64 {
@@ -341,7 +345,7 @@ impl Get {
     }
 
     pub async fn total_clock_speed() -> Result<f32> {
-        let output = fs::read_to_string(Get::path(SysProperty::CpuInfo))?;
+        let output = fs::read_to_string(SysProperty::CpuInfo.path())?;
         Ok(Self::_total_clock_speed(&output))
     }
 
@@ -353,7 +357,7 @@ impl Get {
     }
 
     pub async fn total_cpu_cores() -> Result<usize> {
-        let output = fs::read_to_string(Get::path(SysProperty::CpuInfo))?;
+        let output = fs::read_to_string(SysProperty::CpuInfo.path())?;
         Ok(Self::_total_cpu_cores(&output))
     }
 
@@ -368,7 +372,7 @@ impl Get {
     pub async fn network_dev() -> Result<NetworkDevices> {
         let route = fs::read_to_string("/proc/net/route")?;
         let fib_trie = fs::read_to_string("/proc/net/fib_trie")?;
-        let net_dev = fs::read_to_string(Get::path(SysProperty::NetDev))?;
+        let net_dev = fs::read_to_string(SysProperty::NetDev.path())?;
         let if_inet = fs::read_to_string("/proc/net/if_inet6")?;
         Self::_network_dev(&net_dev, &route, &fib_trie, &if_inet)
     }
@@ -396,8 +400,8 @@ impl Get {
     }
 
     pub async fn storage_devices() -> Result<Storages> {
-        let stor_dev = fs::read_to_string(Get::path(SysProperty::StorDev))?;
-        let stor_mounts = fs::read_to_string(Get::path(SysProperty::StorMounts))?;
+        let stor_dev = fs::read_to_string(SysProperty::StorDev.path())?;
+        let stor_mounts = fs::read_to_string(SysProperty::StorMounts.path())?;
         Ok(Self::_storage_devices(&stor_dev, &stor_mounts))
     }
 
@@ -430,8 +434,8 @@ impl Get {
 
     #[allow(dead_code)]
     async fn storage_partitions(stor_name: &str) -> Result<Partitions> {
-        let stor_dev = fs::read_to_string(Get::path(SysProperty::StorDev))?;
-        let stor_mounts = fs::read_to_string(Get::path(SysProperty::StorMounts))?;
+        let stor_dev = fs::read_to_string(SysProperty::StorDev.path())?;
+        let stor_mounts = fs::read_to_string(SysProperty::StorMounts.path())?;
         Ok(Self::_storage_partitions(
             &stor_name,
             &stor_dev,
@@ -475,7 +479,7 @@ impl Get {
 
     pub async fn vgs() -> Result<VolGroups> {
         let mut vgs: Vec<VolGroup> = vec![];
-        let output = fs::read_to_string(Get::path(SysProperty::StorDev))?;
+        let output = fs::read_to_string(SysProperty::StorDev.path())?;
         let re = Regex::new(r"(?m)\d*\s*dm-")?;
         if re.captures(&output).is_some() {
             let cmd = Command::new("vgdisplay").arg("--units").arg("b").output()?;
@@ -606,7 +610,7 @@ impl Get {
 
     pub async fn temperatures() -> Result<Temperatures> {
         // reconsider if this should really return an error if one of the sensors doesn't have a label f.e.
-        let paths = fs::read_dir(Get::path(SysProperty::Temperature))?;
+        let paths = fs::read_dir(SysProperty::Temperature.path())?;
         let mut devices: Vec<DeviceSensors> = vec![];
         let re = Regex::new(r"temp[\d]+_input")?;
         for dir_entry in paths {
