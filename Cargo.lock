@@ -408,7 +408,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "rustop-rs"
-version = "0.4.7"
+version = "0.5.0"
 dependencies = [
  "anyhow 1.0.28 (registry+https://github.com/rust-lang/crates.io-index)",
  "async-std 1.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
