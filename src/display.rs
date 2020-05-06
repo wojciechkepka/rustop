@@ -1,9 +1,9 @@
 use super::*;
 use colored::*;
-use std::fmt;
+use std::fmt::{Display, Formatter, Result};
 
-impl fmt::Display for PcInfo {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl Display for PcInfo {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         write!(
             f,
             "┌──────────────────────────────────
@@ -38,8 +38,8 @@ impl fmt::Display for PcInfo {
         )
     }
 }
-impl fmt::Display for NetworkDevices {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl Display for NetworkDevices {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         let mut s = String::new();
         for dev in &self.net_devices {
             s.push_str(&dev.to_string());
@@ -47,8 +47,8 @@ impl fmt::Display for NetworkDevices {
         write!(f, "\n│ NETWORK DEVICE: {}", s)
     }
 }
-impl fmt::Display for NetworkDevice {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl Display for NetworkDevice {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         write!(
             f,
             "
@@ -67,8 +67,8 @@ impl fmt::Display for NetworkDevice {
         )
     }
 }
-impl fmt::Display for Storages {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl Display for Storages {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         let mut s = String::new();
         for dev in &self.storage_devices {
             s.push_str(&dev.to_string());
@@ -76,8 +76,8 @@ impl fmt::Display for Storages {
         write!(f, "\n│ STORAGE: {}", s)
     }
 }
-impl fmt::Display for Storage {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl Display for Storage {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         let mut partitions = String::new();
         for p in &self.partitions {
             partitions.push_str(&p.to_string());
@@ -99,8 +99,8 @@ impl fmt::Display for Storage {
     }
 }
 
-impl fmt::Display for Partition {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl Display for Partition {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         write!(
             f,
             "
@@ -119,8 +119,8 @@ impl fmt::Display for Partition {
         )
     }
 }
-impl fmt::Display for VolGroups {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl Display for VolGroups {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         let mut s = String::new();
         for dev in &self.vgs {
             s.push_str(&dev.to_string());
@@ -128,8 +128,8 @@ impl fmt::Display for VolGroups {
         write!(f, "\n│ VOLUME GROUPS: {}", s)
     }
 }
-impl fmt::Display for VolGroup {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl Display for VolGroup {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         let mut lvms = "".to_string();
         for p in &self.lvms {
             lvms.push_str(&p.to_string());
@@ -150,8 +150,8 @@ impl fmt::Display for VolGroup {
         )
     }
 }
-impl fmt::Display for LogVolume {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl Display for LogVolume {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         write!(
             f,
             "
@@ -172,8 +172,8 @@ impl fmt::Display for LogVolume {
         )
     }
 }
-impl fmt::Display for Temperatures {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl Display for Temperatures {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         let mut s = String::new();
         for dev in &self.temp_devices {
             s.push_str(&dev.to_string());
@@ -181,8 +181,8 @@ impl fmt::Display for Temperatures {
         write!(f, "\n│ TEMPERATURES: {}", s)
     }
 }
-impl fmt::Display for DeviceSensors {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl Display for DeviceSensors {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         let mut temps = "".to_string();
         for temp in &self.sensors {
             temps.push_str(&temp.to_string());
@@ -197,8 +197,8 @@ impl fmt::Display for DeviceSensors {
         )
     }
 }
-impl fmt::Display for Sensor {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl Display for Sensor {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         write!(
             f,
             "\n│   │         ├─{} {}°C",

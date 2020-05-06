@@ -9,33 +9,11 @@ use structopt::StructOpt;
 async fn main() -> Result<()> {
     let opt = Opt::from_args();
 
-    if let Some(_x) = opt.cmd {
-        match _x {
-            OptSubcommands::Get { property: n } => match &n[..] {
-                "hostname" => println!("{}", Get::sysproperty(SysProperty::Hostname).await?),
-                "kernel" => println!("{}", Get::sysproperty(SysProperty::OsRelease).await?),
-                "uptime" => println!("{}", Get::uptime().await?),
-                "cpu" => println!("{}", Get::cpu_info().await?),
-                "cpuclock" => println!("{}", Get::cpu_clock().await?),
-                "memory" => println!("{}", Get::mem(Memory::MemTotal).await?),
-                "fmemory" => println!("{}", Get::mem(Memory::MemFree).await?),
-                "swap" => println!("{}", Get::mem(Memory::SwapTotal).await?),
-                "fswap" => println!("{}", Get::mem(Memory::SwapFree).await?),
-                "network" => println!(
-                    "{}",
-                    serde_json::to_string_pretty(&Get::network_dev().await?)?
-                ),
-                "storage" => println!(
-                    "{}",
-                    serde_json::to_string_pretty(&Get::storage_devices().await?)?
-                ),
-                "vgs" => println!("{}", serde_json::to_string_pretty(&Get::vgs().await?)?),
-                "graphics" => println!("{}", Get::graphics_card().await?),
-                "temperatures" => println!(
-                    "{}",
-                    serde_json::to_string_pretty(&Get::temperatures().await?)?
-                ),
-                _ => println!("unsupported property"),
+    if let Some(cmd) = opt.cmd {
+        match cmd {
+            OptSubcommands::Get { property: n } => match out::get_property(&n).await {
+                Ok(_) => {}
+                Err(e) => eprintln!("Failed to get property {} - {}", n, e),
             },
         }
     } else {
@@ -52,7 +30,7 @@ async fn main() -> Result<()> {
                 Err(e) => eprintln!("Failed to serialize data as yaml - {}", e),
             }
         } else {
-            s = out(&p, &opt);
+            s = normal_out(&p, &opt);
         }
 
         match opt.file {

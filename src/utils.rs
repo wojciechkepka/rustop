@@ -22,7 +22,6 @@ pub fn conv_b(bytes: u64) -> String {
     }
 }
 
-#[allow(dead_code)]
 pub fn conv_t(sec: f64) -> String {
     if sec < 60. {
         format!("{} seconds", sec)
