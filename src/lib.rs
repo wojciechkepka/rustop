@@ -306,7 +306,7 @@ impl Get {
         Ok(Self::_uptime(&output))
     }
 
-    fn _uptime(out: &str) -> f64 {
+    pub(crate) fn _uptime(out: &str) -> f64 {
         match out.split(' ').collect::<Vec<&str>>()[0].parse::<f64>() {
             Ok(up) => up,
             Err(_) => 0.0,
@@ -318,7 +318,7 @@ impl Get {
         Ok(Self::_cpu_info(&output))
     }
 
-    fn _cpu_info(out: &str) -> String {
+    pub(crate) fn _cpu_info(out: &str) -> String {
         let re = Regex::new(r"model name\s*: (.*)").unwrap();
         re.captures(&out)
             .map_or("".to_string(), |x| x[1].to_string())
@@ -328,7 +328,7 @@ impl Get {
         let output = fs::read_to_string(Get::path(SysProperty::Mem))?;
         Ok(Self::_mem(target, &output))
     }
-    fn _mem(target: Memory, out: &str) -> u64 {
+    pub(crate) fn _mem(target: Memory, out: &str) -> u64 {
         let re = match target {
             Memory::SwapFree => Regex::new(r"SwapFree:\s*(\d*)").unwrap(),
             Memory::SwapTotal => Regex::new(r"SwapTotal:\s*(\d*)").unwrap(),
@@ -346,7 +346,7 @@ impl Get {
         Ok(Self::_total_clock_speed(&output))
     }
 
-    fn _total_clock_speed(out: &str) -> f32 {
+    pub(crate) fn _total_clock_speed(out: &str) -> f32 {
         let re = Regex::new(r"cpu MHz\s*: (.*)").unwrap();
         re.captures_iter(&out)
             .map(|x| handle(x[1].parse::<f32>()))
@@ -358,7 +358,7 @@ impl Get {
         Ok(Self::_total_cpu_cores(&output))
     }
 
-    fn _total_cpu_cores(out: &str) -> usize {
+    pub(crate) fn _total_cpu_cores(out: &str) -> usize {
         out.rmatches("cpu MHz").count()
     }
 
@@ -493,10 +493,12 @@ impl Get {
     pub async fn graphics_card() -> Result<String> {
         let cmd = Command::new("lspci").output()?;
         let out = str::from_utf8(&cmd.stdout)?;
-        let re = Regex::new(r"(?m)VGA compatible controller:\s*(.*)$")?;
-        Ok(re
-            .captures(&out)
-            .map_or("".to_string(), |vga| vga[1].to_string()))
+        Ok(Self::_graphics_card(&out))
+    }
+    pub(crate) fn _graphics_card(out: &str) -> String {
+        let re = Regex::new(r"(?m)VGA compatible controller:\s*(.*)$").unwrap();
+        re.captures(&out)
+            .map_or("".to_string(), |vga| vga[1].to_string())
     }
 
     async fn ipv4_addr(interface_name: &str) -> Result<Ipv4Addr> {
@@ -505,7 +507,11 @@ impl Get {
         Self::_ipv4_addr(&interface_name, &route, &fib_trie)
     }
 
-    fn _ipv4_addr(interface_name: &str, route: &str, fib_trie: &str) -> Result<Ipv4Addr> {
+    pub(crate) fn _ipv4_addr(
+        interface_name: &str,
+        route: &str,
+        fib_trie: &str,
+    ) -> Result<Ipv4Addr> {
         let mut iface_dest = "".to_string();
         let mut ip_addr = Ipv4Addr::UNSPECIFIED;
         if interface_name == "lo" {
@@ -537,30 +543,34 @@ impl Get {
     }
 
     async fn ipv6_addr(interface_name: &str) -> Result<Ipv6Addr> {
-        let mut ip_addr = Ipv6Addr::UNSPECIFIED;
         if interface_name == "lo" {
             Ok(Ipv6Addr::LOCALHOST)
         } else {
             let output = fs::read_to_string("/proc/net/if_inet6")?;
-            let re = Regex::new(r"(?m)^([\d\w]*)\s\d*\s\d*\s\d*\s\d*\s*(.*)$")?;
-            for capture in re.captures_iter(&output) {
-                if &capture[2] == interface_name {
-                    ip_addr = Ipv6Addr::from_str(&format!(
-                        "{}:{}:{}:{}:{}:{}:{}:{}",
-                        &capture[1][..4],
-                        &capture[1][4..8],
-                        &capture[1][8..12],
-                        &capture[1][12..16],
-                        &capture[1][16..20],
-                        &capture[1][20..24],
-                        &capture[1][24..28],
-                        &capture[1][28..32]
-                    ))?;
-                    break;
-                }
-            }
-            Ok(ip_addr)
+            Self::_ipv6_addr(&interface_name, &output)
         }
+    }
+
+    pub(crate) fn _ipv6_addr(interface_name: &str, out: &str) -> Result<Ipv6Addr> {
+        let mut ip_addr = Ipv6Addr::UNSPECIFIED;
+        let re = Regex::new(r"(?m)^([\d\w]*)\s\d*\s\d*\s\d*\s\d*\s*(.*)$")?;
+        for capture in re.captures_iter(&out) {
+            if &capture[2] == interface_name {
+                ip_addr = Ipv6Addr::from_str(&format!(
+                    "{}:{}:{}:{}:{}:{}:{}:{}",
+                    &capture[1][..4],
+                    &capture[1][4..8],
+                    &capture[1][8..12],
+                    &capture[1][12..16],
+                    &capture[1][16..20],
+                    &capture[1][20..24],
+                    &capture[1][24..28],
+                    &capture[1][28..32]
+                ))?;
+                break;
+            }
+        }
+        Ok(ip_addr)
     }
 
     pub async fn temperatures() -> Result<Temperatures> {
