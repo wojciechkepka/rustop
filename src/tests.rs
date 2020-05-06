@@ -2,41 +2,41 @@
 use super::*;
 
 #[cfg(test)]
-mod test {
+mod gets {
     use super::*;
     #[test]
-    fn gets_cpu_info() {
+    fn cpu_info() {
         assert_eq!(
             Get::_cpu_info(&tests::CPU_INFO),
             "AMD Ryzen 5 3600 6-Core Processor".to_string()
         )
     }
     #[test]
-    fn gets_total_clock_speed() {
+    fn total_clock_speed() {
         assert_eq!(Get::_total_clock_speed(&tests::CPU_INFO), 26040.395)
     }
     #[test]
-    fn gets_total_cpu_cores() {
+    fn total_cpu_cores() {
         assert_eq!(Get::_total_cpu_cores(&tests::CPU_INFO), 12)
     }
     #[test]
-    fn gets_mem_free() {
+    fn mem_free() {
         assert_eq!(Get::_mem(Memory::MemFree, &tests::MEM_INFO), 10178555904);
     }
     #[test]
-    fn gets_mem_total() {
+    fn mem_total() {
         assert_eq!(Get::_mem(Memory::MemTotal, &tests::MEM_INFO), 16714952704);
     }
     #[test]
-    fn gets_swap_free() {
+    fn swap_free() {
         assert_eq!(Get::_mem(Memory::SwapFree, &tests::MEM_INFO), 0);
     }
     #[test]
-    fn gets_swap_total() {
+    fn swap_total() {
         assert_eq!(Get::_mem(Memory::SwapTotal, &tests::MEM_INFO), 0);
     }
     #[test]
-    fn gets_ipv4_addr() {
+    fn ipv4_addr() {
         assert_eq!(
             Get::_ipv4_addr("wlan0", &tests::ROUTE, &tests::FIB_TRIE).unwrap(),
             Ipv4Addr::new(192, 168, 8, 201)
@@ -47,25 +47,25 @@ mod test {
         )
     }
     #[test]
-    fn gets_ipv6_addr() {
+    fn ipv6_addr() {
         assert_eq!(
             Get::_ipv6_addr("wlan0", &tests::IF_INET6).unwrap(),
             Ipv6Addr::new(0xfe80, 0, 0, 0, 0xd81, 0x2a0d, 0x8467, 0xda1c)
         );
     }
     #[test]
-    fn gets_uptime() {
+    fn uptime() {
         assert_eq!(Get::_uptime(&tests::UPTIME), 52662.34)
     }
     #[test]
-    fn gets_graphics_card() {
+    fn graphics_card() {
         assert_eq!(
             Get::_graphics_card(&tests::LSPCI),
             "NVIDIA Corporation GK106 [GeForce GTX 660] (rev a1)"
         )
     }
     #[test]
-    fn gets_storage_partitions() {
+    fn storage_partitions() {
         let partitions = vec![
             Partition {
                 name: "sdd1".to_string(),
@@ -90,7 +90,7 @@ mod test {
         )
     }
     #[test]
-    fn gets_storage_devices() {
+    fn storage_devices() {
         let sdc_partitions = vec![Partition {
             name: "sdc1".to_string(),
             major: 8,
@@ -183,7 +183,7 @@ mod test {
         );
     }
     #[test]
-    fn gets_network_devices() {
+    fn network_devices() {
         let net_dev = NetworkDevices {
             net_devices: vec![
                 NetworkDevice {
