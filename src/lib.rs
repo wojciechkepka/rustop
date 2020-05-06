@@ -77,18 +77,6 @@ pub struct NetworkDevice {
     ipv4_addr: Ipv4Addr,
     ipv6_addr: Ipv6Addr,
 }
-impl NetworkDevice {
-    #[allow(dead_code)]
-    fn new() -> NetworkDevice {
-        NetworkDevice {
-            name: "".to_string(),
-            received_bytes: 0,
-            transfered_bytes: 0,
-            ipv4_addr: Ipv4Addr::UNSPECIFIED,
-            ipv6_addr: Ipv6Addr::UNSPECIFIED,
-        }
-    }
-}
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub struct Storage {
@@ -97,18 +85,6 @@ pub struct Storage {
     minor: u16,
     size: u64,
     partitions: Vec<Partition>,
-}
-impl Storage {
-    #[allow(dead_code)]
-    fn new() -> Storage {
-        Storage {
-            name: "".to_string(),
-            major: 0,
-            minor: 0,
-            size: 0,
-            partitions: vec![],
-        }
-    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
@@ -143,19 +119,6 @@ pub struct VolGroup {
     lvms: Vec<LogVolume>,
 }
 
-impl VolGroup {
-    #[allow(dead_code)]
-    fn new() -> VolGroup {
-        VolGroup {
-            name: "".to_string(),
-            format: "".to_string(),
-            status: "".to_string(),
-            size: 0,
-            lvms: vec![],
-        }
-    }
-}
-
 #[derive(Serialize, Deserialize, Debug)]
 pub struct LogVolume {
     name: String,
@@ -168,35 +131,10 @@ pub struct LogVolume {
     mountpoint: String,
 }
 
-impl LogVolume {
-    #[allow(dead_code)]
-    fn new() -> LogVolume {
-        LogVolume {
-            name: "".to_string(),
-            vg: "".to_string(),
-            path: "".to_string(),
-            status: "".to_string(),
-            major: 0,
-            minor: 0,
-            size: 0,
-            mountpoint: "".to_string(),
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Default)]
 pub struct Sensor {
     name: String,
     temp: f32,
-}
-impl Sensor {
-    #[allow(dead_code)]
-    fn new() -> Sensor {
-        Sensor {
-            name: "".to_string(),
-            temp: 0.,
-        }
-    }
 }
 
 type Sensors = Vec<Sensor>;
@@ -205,15 +143,7 @@ pub struct DeviceSensors {
     name: String,
     sensors: Sensors,
 }
-impl DeviceSensors {
-    #[allow(dead_code)]
-    fn new() -> DeviceSensors {
-        DeviceSensors {
-            name: "".to_string(),
-            sensors: vec![],
-        }
-    }
-}
+
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct Temperatures {
     pub temp_devices: Vec<DeviceSensors>,
@@ -233,7 +163,7 @@ pub struct VolGroups {
     pub vgs: Vec<VolGroup>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Default)]
 pub struct PcInfo {
     hostname: String,
     kernel_version: String,
@@ -267,32 +197,6 @@ impl PcInfo {
             vgs: handle(Get::vgs().await),
             graphics_card: handle(Get::graphics_card().await),
             temps: handle(Get::temperatures().await),
-        }
-    }
-}
-impl Default for PcInfo {
-    fn default() -> PcInfo {
-        PcInfo {
-            hostname: "".to_string(),
-            kernel_version: "".to_string(),
-            uptime: 0.,
-            cpu: "".to_string(),
-            cpu_clock: 0.,
-            memory: 0,
-            free_memory: 0,
-            swap: 0,
-            free_swap: 0,
-            network_dev: NetworkDevices {
-                net_devices: vec![],
-            },
-            storage_dev: Storages {
-                storage_devices: vec![],
-            },
-            vgs: VolGroups { vgs: vec![] },
-            graphics_card: "".to_string(),
-            temps: Temperatures {
-                temp_devices: vec![],
-            },
         }
     }
 }
@@ -622,7 +526,7 @@ impl Get {
         for dir_entry in paths {
             let mut sensor_count = 0;
             let path = dir_entry?.path();
-            let mut dev = DeviceSensors::new();
+            let mut dev = DeviceSensors::default();
             let mut dev_temps: Vec<Sensor> = vec![];
             dev.name = fs::read_to_string(path.join("name"))?.trim().to_string();
             for temp_file in fs::read_dir(&path)? {
@@ -631,7 +535,7 @@ impl Get {
                 }
             }
             for i in 1..=sensor_count {
-                let mut sensor = Sensor::new();
+                let mut sensor = Sensor::default();
                 sensor.name = fs::read_to_string(path.join(format!("temp{}_label", i)))
                     .unwrap_or_else(|_| "".to_string())
                     .trim()
