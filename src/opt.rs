@@ -38,11 +38,26 @@ pub struct Opt {
     pub cmd: Option<OptSubcommands>,
 }
 
+static AVAILABLE_OPTIONS: &str = "available options:
+- hostname
+- kernel
+- uptime
+- cpu
+- cpuclock
+- memory
+- fmemory
+- swap
+- fswap
+- network
+- storage
+- vgs
+- graphics
+- temperatures";
+
 #[derive(StructOpt)]
 pub enum OptSubcommands {
-    /// Gets specified info
     Get {
-        ///Available options: { hostname, kernel, uptime, cpu, cpuclock, memory, fmemory, swap, fswap, network, storage, vgs, graphics, temperatures }
+        #[structopt(help = AVAILABLE_OPTIONS)]
         property: String,
     },
 }
