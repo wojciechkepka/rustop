@@ -229,7 +229,7 @@ mod test {
     }
 }
 
-pub const CPU_INFO: &str = "processor       : 0
+static CPU_INFO: &str = "processor       : 0
 vendor_id       : AuthenticAMD
 cpu family      : 23
 model           : 113
@@ -565,7 +565,7 @@ cache_alignment : 64
 address sizes   : 43 bits physical, 48 bits virtual
 power management: ts ttp tm hwpstate eff_freq_ro [13] [14]";
 
-pub const MEM_INFO: &str = "MemTotal:       16323196 kB
+static MEM_INFO: &str = "MemTotal:       16323196 kB
 MemFree:         9939996 kB
 MemAvailable:   12560252 kB
 Buffers:          157600 kB
@@ -617,11 +617,11 @@ DirectMap4k:      325424 kB
 DirectMap2M:     6944768 kB
 DirectMap1G:    10485760 kB";
 
-pub const ROUTE: &str = "Iface   Destination     Gateway         Flags   RefCnt  Use     Metric  Mask            MTU     Window  IRTT          
+static ROUTE: &str = "Iface   Destination     Gateway         Flags   RefCnt  Use     Metric  Mask            MTU     Window  IRTT          
 wlan0   00000000        0108A8C0        0003    0       0       304     00000000        0       0       0             
 wlan0   0008A8C0        00000000        0001    0       0       304     00FFFFFF        0       0       0";
 
-pub const FIB_TRIE: &str = "Main:
+static FIB_TRIE: &str = "Main:
   +-- 0.0.0.0/0 3 0 5
      |-- 0.0.0.0
         /0 universe UNICAST
@@ -666,17 +666,17 @@ Local:
            |-- 192.168.8.255
               /32 link BROADCAST";
 
-pub const UPTIME: &str = "52662.34 619766.90";
+static UPTIME: &str = "52662.34 619766.90";
 
-pub const IF_INET6: &str = "fe800000000000000d812a0d8467da1c 04 40 20 80    wlan0
+static IF_INET6: &str = "fe800000000000000d812a0d8467da1c 04 40 20 80    wlan0
 fe800000000000009879b5d0240418bf 01 40 20 80       lo
 fe80000000000000f17b7100b5a1f781 05 40 20 80     tun0
 00000000000000000000000000000001 01 80 10 80       lo";
 
-pub const LSPCI: &str =
+static LSPCI: &str =
     "09:00.0 VGA compatible controller: NVIDIA Corporation GK106 [GeForce GTX 660] (rev a1)";
 
-pub const STOR_DEV: &str = "major minor  #blocks  name
+static STOR_DEV: &str = "major minor  #blocks  name
    8       32  312570167 sdc
    8       33  312569127 sdc1
    8       48  117220824 sdd
@@ -689,7 +689,7 @@ pub const STOR_DEV: &str = "major minor  #blocks  name
    8       68  292607100 sde4
  254        0  116699136 dm-0";
 
-pub const STOR_MOUNTS: &str = "proc /proc proc rw,nosuid,nodev,noexec,relatime 0 0
+static STOR_MOUNTS: &str = "proc /proc proc rw,nosuid,nodev,noexec,relatime 0 0
 sys /sys sysfs rw,nosuid,nodev,noexec,relatime 0 0
 dev /dev devtmpfs rw,nosuid,relatime,size=8149064k,nr_inodes=2037266,mode=755 0 0
 run /run tmpfs rw,nosuid,nodev,relatime,mode=755 0 0
@@ -732,7 +732,7 @@ gvfsd-fuse /run/user/1000/gvfs fuse.gvfsd-fuse rw,nosuid,nodev,relatime,user_id=
 fusectl /sys/fs/fuse/connections fusectl rw,nosuid,nodev,noexec,relatime 0 0
 fusectl /var/lib/dhcpcd/sys/fs/fuse/connections fusectl rw,nosuid,nodev,noexec,relatime 0 0";
 
-pub const NET_DEV: &str = "Inter-|   Receive                                                |  Transmit
+static NET_DEV: &str = "Inter-|   Receive                                                |  Transmit
  face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
      lo:  817348    1992    0    0    0     0          0         0   817348    1992    0    0    0     0       0          0
      enp8s0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
