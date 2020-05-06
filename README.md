@@ -1,10 +1,9 @@
-# Rustop
+# rustop
 [![Travis CI](https://travis-ci.org/wojciechkepka/rustop.svg?branch=master)](https://travis-ci.org/wojciechkepka/rustop/builds)  
 
-All important information about your system in one place.
-## Prerequisites
-- cargo
-- Linux
+All important information about your system in one place.  
+  
+`rustop` gathers information from ***procfs*** so for now support is limited to Linux.
 ## Installing
 ### Cargo
 - `cargo install rustop-rs`
@@ -13,57 +12,32 @@ All important information about your system in one place.
 - `cd rustop`
 - `cargo build --release`
 - `cp target/release/rustop /usr/local/bin`
-## Running
-```
-USAGE:
-    rustop [FLAGS] [OPTIONS] [SUBCOMMAND]
+## Get
+To easily get one of the system properties invoke `rustop` with subcommand `get`.  
+Example:  
+`rustop get cpu`  
+  
+Available properties:  
+ - hostname
+ - kernel
+ - uptime
+ - cpu
+ - cpuclock
+ - memory
+ - fmemory
+ - swap
+ - fswap
+ - network
+ - storage
+ - vgs
+ - graphics
+ - temperatures
+## Output
+Sample output from invoking `rustop` is presented below. There are multiple flags that expand the amount of information that is presented.  
 
-FLAGS:
-    -h, --help            Prints help information
-    -j, --json            Prints output in JSON format
-    -n, --network         Adds info about network interfaces
-    -p, --prettyjson      Prints output in pretty printed JSON format
-    -q, --quiet           Limits displayed info to specified flags only like ['-s', '-n', '-t', '-g']
-    -s, --storage         Adds info about storage
-    -t, --temps           Adds info about temperature sensors
-    -V, --version         Prints version information
-    -g, --volume-group    Adds info about volume groups and logical volumes
-    -y, --yaml            Prints output in YAML format
+There is also a possibility to serialize output into formats like *JSON*(`-j` or `-p` for prettyjson) or *YAML*(`-y`).  
 
-OPTIONS:
-    -f, --file <FILE>    Prints output to the specified file
-
-SUBCOMMANDS:
-    get     gets specified info
-    help    Prints this message or the help of the given subcommand(s)
-```
-### Get
-```
-USAGE:
-    rustop get <info>
-
-FLAGS:
-    -h, --help       Prints help information
-    -V, --version    Prints version information
-
-ARGS:
-    <info>    Available options:
-               - hostname
-               - kernel
-               - uptime
-               - cpu
-               - cpuclock
-               - memory
-               - fmemory
-               - swap
-               - fswap
-               - network
-               - storage
-               - vgs
-               - graphics
-               - temperatures
-```
-## Standard output
+To omit the standard output use a `-q`(quiet) flag together with parts that are interesting for you. For example `-qsn` will just print *storage* and *network* information.
 ```
 ┌──────────────────────────────────
 │ HOSTNAME:             wojtas-arch
@@ -77,7 +51,7 @@ ARGS:
 │ SWAP:                 8.00 GB  8589930496
 │ SWAPFREE:             8.00 GB  8589930496  100%
 ```
-## Network devices `-n`
+### Network devices `-n`
 ```
 │ NETWORK DEVICE: 
 │   ├─lo──────────────────────────────────
@@ -91,7 +65,7 @@ ARGS:
 │   │     DOWN:     460.58 MB      482954238
 │   │     UP:       62.89 MB      65943483
 ```
-## Sensors `-t`
+### Sensors `-t`
 ```
 │ TEMPERATURES: 
 │   ├─fam15h_power──────────────────────────────────
@@ -100,43 +74,9 @@ ARGS:
 │   │     SENSORS: 
 │   │         ├─temp1 47.125°C
 ```
-## Storage `-s`
+### Storage `-s`
 ```
 │ STORAGE: 
-│   ├─sda──────────────────────────────────
-│   │     MAJ:MIN:     8:0
-│   │     SIZE:        1.82 TB    2000398934016
-│   │     PARTITIONS: 
-│   │         ├─sda1──────────────────────────────────
-│   │         │     MAJ:MIN:     8:1
-│   │         │     SIZE:        1.00 KB    1024
-│   │         │     FILESYSTEM:  
-│   │         │     MOUNTPOINT:  
-│   │         ├─sda5──────────────────────────────────
-│   │         │     MAJ:MIN:     8:5
-│   │         │     SIZE:        293.25 GB    314870595584
-│   │         │     FILESYSTEM:  ext4
-│   │         │     MOUNTPOINT:  /home/wojtek/zdjecia
-│   │         ├─sda6──────────────────────────────────
-│   │         │     MAJ:MIN:     8:6
-│   │         │     SIZE:        979.53 GB    1051762622464
-│   │         │     FILESYSTEM:  ext4
-│   │         │     MOUNTPOINT:  /home/wojtek/filmy
-│   │         ├─sda7──────────────────────────────────
-│   │         │     MAJ:MIN:     8:7
-│   │         │     SIZE:        197.14 GB    211673939968
-│   │         │     FILESYSTEM:  ext4
-│   │         │     MOUNTPOINT:  /home/wojtek/dokumenty
-│   │         ├─sda8──────────────────────────────────
-│   │         │     MAJ:MIN:     8:8
-│   │         │     SIZE:        197.33 GB    211883655168
-│   │         │     FILESYSTEM:  ext4
-│   │         │     MOUNTPOINT:  /home/wojtek/muzyka
-│   │         ├─sda9──────────────────────────────────
-│   │         │     MAJ:MIN:     8:9
-│   │         │     SIZE:        195.76 GB    210191253504
-│   │         │     FILESYSTEM:  ext4
-│   │         │     MOUNTPOINT:  /home/wojtek/inne
 │   ├─sdb──────────────────────────────────
 │   │     MAJ:MIN:     8:16
 │   │     SIZE:        111.79 GB    120034123776
@@ -166,7 +106,7 @@ ARGS:
 │   │         │     FILESYSTEM:  
 │   │         │     MOUNTPOINT:
 ```
-## Volume Groups and lvms `-g`
+### Volume Groups and lvms `-g`
 ```
 │ VOLUME GROUPS: 
 │   ├─centos_docker-cent7──────────────────────────────────
@@ -188,265 +128,5 @@ ARGS:
 │   │         │     MOUNTPOINT:  
 
 ```
-## Example pretty-JSON output
-```
-{
-  "hostname": "wojtas-arch",
-  "kernel_version": "5.2.14-arch1-1-ARCH",
-  "uptime": 13092.44,
-  "cpu": "AMD FX(tm)-8150 Eight-Core Processor",
-  "cpu_clock": 4001.968,
-  "memory": 16788914176,
-  "free_memory": 7781818368,
-  "swap": 8589930496,
-  "free_swap": 8589930496,
-  "network_dev": [
-    {
-      "name": "lo",
-      "received_bytes": 13752,
-      "transfered_bytes": 13752,
-      "ipv4_addr": "127.0.0.1",
-      "ipv6_addr": "::1"
-    },
-    {
-      "name": "enp5s0",
-      "received_bytes": 483063256,
-      "transfered_bytes": 65962608,
-      "ipv4_addr": "192.168.0.3",
-      "ipv6_addr": "fd00:a84e:3f17:bf12:e2f7:f2ca:516f:ba81"
-    }
-  ],
-  "storage_dev": [
-    {
-      "name": "sda",
-      "major": 8,
-      "minor": 0,
-      "size": 2000398934016,
-      "partitions": [
-        {
-          "name": "sda1",
-          "major": 8,
-          "minor": 1,
-          "size": 1024,
-          "filesystem": "",
-          "mountpoint": ""
-        },
-        {
-          "name": "sda5",
-          "major": 8,
-          "minor": 5,
-          "size": 314870595584,
-          "filesystem": "ext4",
-          "mountpoint": "/home/wojtek/zdjecia"
-        },
-        {
-          "name": "sda6",
-          "major": 8,
-          "minor": 6,
-          "size": 1051762622464,
-          "filesystem": "ext4",
-          "mountpoint": "/home/wojtek/filmy"
-        },
-        {
-          "name": "sda7",
-          "major": 8,
-          "minor": 7,
-          "size": 211673939968,
-          "filesystem": "ext4",
-          "mountpoint": "/home/wojtek/dokumenty"
-        },
-        {
-          "name": "sda8",
-          "major": 8,
-          "minor": 8,
-          "size": 211883655168,
-          "filesystem": "ext4",
-          "mountpoint": "/home/wojtek/muzyka"
-        },
-        {
-          "name": "sda9",
-          "major": 8,
-          "minor": 9,
-          "size": 210191253504,
-          "filesystem": "ext4",
-          "mountpoint": "/home/wojtek/inne"
-        }
-      ]
-    },
-    {
-      "name": "sdb",
-      "major": 8,
-      "minor": 16,
-      "size": 120034123776,
-      "partitions": [
-        {
-          "name": "sdb1",
-          "major": 8,
-          "minor": 17,
-          "size": 536870912,
-          "filesystem": "vfat",
-          "mountpoint": "/efi"
-        },
-        {
-          "name": "sdb2",
-          "major": 8,
-          "minor": 18,
-          "size": 8589934592,
-          "filesystem": "",
-          "mountpoint": ""
-        },
-        {
-          "name": "sdb3",
-          "major": 8,
-          "minor": 19,
-          "size": 110906252288,
-          "filesystem": "ext4",
-          "mountpoint": "/"
-        }
-      ]
-    },
-    {
-      "name": "sdc",
-      "major": 8,
-      "minor": 32,
-      "size": 320071851008,
-      "partitions": [
-        {
-          "name": "sdc1",
-          "major": 8,
-          "minor": 33,
-          "size": 320070786048,
-          "filesystem": "",
-          "mountpoint": ""
-        }
-      ]
-    }
-  ],
-  "vgs": [],
-  "graphics_card": "NVIDIA Corporation GK106 [GeForce GTX 660] (rev a1)",
-  "temps": [
-    {
-      "name": "fam15h_power",
-      "temps": []
-    },
-    {
-      "name": "k10temp",
-      "temps": [
-        {
-          "name": "temp1",
-          "temp": 44.5
-        }
-      ]
-    }
-  ]
-}
-```
-## Example YAML output
-```
----
-hostname: wojtas-arch
-kernel_version: 5.2.14-arch1-1-ARCH
-uptime: 14323.98
-cpu: AMD FX(tm)-8150 Eight-Core Processor
-cpu_clock: 3946.1953125
-memory: 16788914176
-free_memory: 7313653760
-swap: 8589930496
-free_swap: 8589930496
-network_dev:
-  - name: lo
-    received_bytes: 16920
-    transfered_bytes: 16920
-    ipv4_addr: 127.0.0.1
-    ipv6_addr: "::1"
-  - name: enp5s0
-    received_bytes: 491390611
-    transfered_bytes: 66680084
-    ipv4_addr: 192.168.0.3
-    ipv6_addr: "fd00:a84e:3f17:bf12:e2f7:f2ca:516f:ba81"
-storage_dev:
-  - name: sda
-    major: 8
-    minor: 0
-    size: 2000398934016
-    partitions:
-      - name: sda1
-        major: 8
-        minor: 1
-        size: 1024
-        filesystem: ""
-        mountpoint: ""
-      - name: sda5
-        major: 8
-        minor: 5
-        size: 314870595584
-        filesystem: ext4
-        mountpoint: /home/wojtek/zdjecia
-      - name: sda6
-        major: 8
-        minor: 6
-        size: 1051762622464
-        filesystem: ext4
-        mountpoint: /home/wojtek/filmy
-      - name: sda7
-        major: 8
-        minor: 7
-        size: 211673939968
-        filesystem: ext4
-        mountpoint: /home/wojtek/dokumenty
-      - name: sda8
-        major: 8
-        minor: 8
-        size: 211883655168
-        filesystem: ext4
-        mountpoint: /home/wojtek/muzyka
-      - name: sda9
-        major: 8
-        minor: 9
-        size: 210191253504
-        filesystem: ext4
-        mountpoint: /home/wojtek/inne
-  - name: sdb
-    major: 8
-    minor: 16
-    size: 120034123776
-    partitions:
-      - name: sdb1
-        major: 8
-        minor: 17
-        size: 536870912
-        filesystem: vfat
-        mountpoint: /efi
-      - name: sdb2
-        major: 8
-        minor: 18
-        size: 8589934592
-        filesystem: ""
-        mountpoint: ""
-      - name: sdb3
-        major: 8
-        minor: 19
-        size: 110906252288
-        filesystem: ext4
-        mountpoint: /
-  - name: sdc
-    major: 8
-    minor: 32
-    size: 320071851008
-    partitions:
-      - name: sdc1
-        major: 8
-        minor: 33
-        size: 320070786048
-        filesystem: ""
-        mountpoint: ""
-vgs: []
-graphics_card: "NVIDIA Corporation GK106 [GeForce GTX 660] (rev a1)"
-temps:
-  - name: fam15h_power
-    temps: []
-  - name: k10temp
-    temps:
-      - name: temp1
-        temp: 45.125
-```
+## License
+[**MIT**](https://github.com/wojciechkepka/rustop/blob/master/LICENSE)
