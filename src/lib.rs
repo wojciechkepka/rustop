@@ -46,7 +46,7 @@ pub enum Memory {
     MemFree,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub struct NetworkDevice {
     name: String,
     received_bytes: u64,
@@ -67,7 +67,7 @@ impl NetworkDevice {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub struct Storage {
     name: String,
     major: u16,
@@ -88,7 +88,7 @@ impl Storage {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub struct Partition {
     name: String,
     major: u16,
@@ -197,11 +197,11 @@ pub struct Temperatures {
 }
 
 type Partitions = Vec<Partition>;
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]
 pub struct NetworkDevices {
     pub net_devices: Vec<NetworkDevice>,
 }
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]
 pub struct Storages {
     pub storage_devices: Vec<Storage>,
 }
@@ -367,17 +367,28 @@ impl Get {
     }
 
     pub async fn network_dev() -> Result<NetworkDevices> {
+        let route = fs::read_to_string("/proc/net/route")?;
+        let fib_trie = fs::read_to_string("/proc/net/fib_trie")?;
+        let net_dev = fs::read_to_string(Get::path(SysProperty::NetDev))?;
+        let if_inet = fs::read_to_string("/proc/net/if_inet6")?;
+        Self::_network_dev(&net_dev, &route, &fib_trie, &if_inet)
+    }
+    pub(crate) fn _network_dev(
+        net_dev: &str,
+        route: &str,
+        fib_trie: &str,
+        if_inet: &str,
+    ) -> Result<NetworkDevices> {
         let mut devices = vec![];
-        let output = fs::read_to_string(Get::path(SysProperty::NetDev))?;
         let re =
             Regex::new(r"([\d\w]*):\s*(\d*)\s*\d*\s*\d*\s*\d*\s*\d*\s*\d*\s*\d*\s*\d*\s*(\d*)")?;
-        for network_dev in re.captures_iter(&output) {
+        for network_dev in re.captures_iter(&net_dev) {
             devices.push(NetworkDevice {
                 name: network_dev[1].to_string(),
                 received_bytes: handle(network_dev[2].parse::<u64>()),
                 transfered_bytes: handle(network_dev[3].parse::<u64>()),
-                ipv4_addr: Get::ipv4_addr(&network_dev[1]).await?,
-                ipv6_addr: Get::ipv6_addr(&network_dev[1]).await?,
+                ipv4_addr: Get::_ipv4_addr(&network_dev[1], &route, &fib_trie)?,
+                ipv6_addr: Get::_ipv6_addr(&network_dev[1], &if_inet)?,
             });
         }
         Ok(NetworkDevices {
@@ -386,46 +397,65 @@ impl Get {
     }
 
     pub async fn storage_devices() -> Result<Storages> {
-        let mut devices = Vec::new();
+        let stor_dev = fs::read_to_string(Get::path(SysProperty::StorDev))?;
+        let stor_mounts = fs::read_to_string(Get::path(SysProperty::StorMounts))?;
+        Ok(Self::_storage_devices(&stor_dev, &stor_mounts))
+    }
 
-        let output = fs::read_to_string(Get::path(SysProperty::StorDev))?;
-        let re = Regex::new(r"(?m)^\s*(\d*)\s*(\d*)\s*(\d*)\s([\w\d]*)$")?;
+    pub(crate) fn _storage_devices(stor_dev: &str, stor_mounts: &str) -> Storages {
+        let mut devices = Vec::new();
+        let re = Regex::new(r"(?m)^\s*(\d*)\s*(\d*)\s*(\d*)\s([\w\d]*)$").unwrap();
         for storage_dev in re
-            .captures_iter(&output)
+            .captures_iter(&stor_dev)
             .filter(|storage_dev| {
                 !(storage_dev[4].starts_with("loop") || storage_dev[4].starts_with("ram"))
             })
-            .filter(|storage_dev| &storage_dev[2] == "0")
+            .filter(|storage_dev| {
+                let stor_dev_re = Regex::new(r"^[a-z]+$").unwrap();
+                stor_dev_re.is_match(&storage_dev[4].to_string())
+            })
         {
             devices.push(Storage {
                 major: handle(storage_dev[1].parse::<u16>()),
                 minor: handle(storage_dev[2].parse::<u16>()),
                 size: handle(storage_dev[3].parse::<u64>()) * 1024,
                 name: storage_dev[4].to_string(),
-                partitions: handle(Get::storage_partitions(&storage_dev[4]).await),
+                partitions: Get::_storage_partitions(&storage_dev[4], &stor_dev, &stor_mounts),
             });
         }
 
-        Ok(Storages {
+        Storages {
             storage_devices: devices,
-        })
+        }
     }
 
+    #[allow(dead_code)]
     async fn storage_partitions(stor_name: &str) -> Result<Partitions> {
-        let mut partitions = vec![];
-        let output = fs::read_to_string(Get::path(SysProperty::StorDev))?;
-        let re = Regex::new(r"(?m)^\s*(\d*)\s*(\d*)\s*(\d*)\s(\w*\d+)$")?;
-        let re2 = Regex::new(r"/dev/(\w*)\s(\S*)\s(\S*)")?;
-        let output2 = fs::read_to_string(Get::path(SysProperty::StorMounts))?;
+        let stor_dev = fs::read_to_string(Get::path(SysProperty::StorDev))?;
+        let stor_mounts = fs::read_to_string(Get::path(SysProperty::StorMounts))?;
+        Ok(Self::_storage_partitions(
+            &stor_name,
+            &stor_dev,
+            &stor_mounts,
+        ))
+    }
 
+    pub(crate) fn _storage_partitions(
+        stor_name: &str,
+        stor_dev: &str,
+        stor_mounts: &str,
+    ) -> Partitions {
+        let mut partitions = vec![];
+        let re = Regex::new(r"(?m)^\s*(\d*)\s*(\d*)\s*(\d*)\s(\w*\d+)$").unwrap();
+        let re2 = Regex::new(r"/dev/(\w*)\s(\S*)\s(\S*)").unwrap();
         for storage_dev in re
-            .captures_iter(&output)
+            .captures_iter(&stor_dev)
             .filter(|x| x[4].starts_with(stor_name))
         {
             let mut partition = Partition::new();
             let partition_name = &storage_dev[4];
 
-            for found_partition in re2.captures_iter(&output2) {
+            for found_partition in re2.captures_iter(&stor_mounts) {
                 if &found_partition[1] == partition_name {
                     partition.mountpoint = found_partition[2].to_string();
                     partition.filesystem = found_partition[3].to_string();
@@ -441,7 +471,7 @@ impl Get {
             partition.name = partition_name.to_string();
             partitions.push(partition);
         }
-        Ok(partitions)
+        partitions
     }
 
     pub async fn vgs() -> Result<VolGroups> {
@@ -501,6 +531,7 @@ impl Get {
             .map_or("".to_string(), |vga| vga[1].to_string())
     }
 
+    #[allow(dead_code)]
     async fn ipv4_addr(interface_name: &str) -> Result<Ipv4Addr> {
         let route = fs::read_to_string("/proc/net/route")?;
         let fib_trie = fs::read_to_string("/proc/net/fib_trie")?;
@@ -542,35 +573,36 @@ impl Get {
         }
     }
 
+    #[allow(dead_code)]
     async fn ipv6_addr(interface_name: &str) -> Result<Ipv6Addr> {
-        if interface_name == "lo" {
-            Ok(Ipv6Addr::LOCALHOST)
-        } else {
-            let output = fs::read_to_string("/proc/net/if_inet6")?;
-            Self::_ipv6_addr(&interface_name, &output)
-        }
+        let output = fs::read_to_string("/proc/net/if_inet6")?;
+        Self::_ipv6_addr(&interface_name, &output)
     }
 
     pub(crate) fn _ipv6_addr(interface_name: &str, out: &str) -> Result<Ipv6Addr> {
-        let mut ip_addr = Ipv6Addr::UNSPECIFIED;
-        let re = Regex::new(r"(?m)^([\d\w]*)\s\d*\s\d*\s\d*\s\d*\s*(.*)$")?;
-        for capture in re.captures_iter(&out) {
-            if &capture[2] == interface_name {
-                ip_addr = Ipv6Addr::from_str(&format!(
-                    "{}:{}:{}:{}:{}:{}:{}:{}",
-                    &capture[1][..4],
-                    &capture[1][4..8],
-                    &capture[1][8..12],
-                    &capture[1][12..16],
-                    &capture[1][16..20],
-                    &capture[1][20..24],
-                    &capture[1][24..28],
-                    &capture[1][28..32]
-                ))?;
-                break;
+        if interface_name == "lo" {
+            Ok(Ipv6Addr::LOCALHOST)
+        } else {
+            let mut ip_addr = Ipv6Addr::UNSPECIFIED;
+            let re = Regex::new(r"(?m)^([\d\w]*)\s\d*\s\d*\s\d*\s\d*\s*(.*)$").unwrap();
+            for capture in re.captures_iter(&out) {
+                if &capture[2] == interface_name {
+                    ip_addr = Ipv6Addr::from_str(&format!(
+                        "{}:{}:{}:{}:{}:{}:{}:{}",
+                        &capture[1][..4],
+                        &capture[1][4..8],
+                        &capture[1][8..12],
+                        &capture[1][12..16],
+                        &capture[1][16..20],
+                        &capture[1][20..24],
+                        &capture[1][24..28],
+                        &capture[1][28..32]
+                    ))?;
+                    break;
+                }
             }
+            Ok(ip_addr)
         }
-        Ok(ip_addr)
     }
 
     pub async fn temperatures() -> Result<Temperatures> {
