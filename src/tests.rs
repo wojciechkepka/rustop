@@ -1,4 +1,70 @@
 #![allow(dead_code)]
+use super::*;
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    #[test]
+    fn gets_cpu_info() {
+        assert_eq!(
+            Get::_cpu_info(&tests::CPU_INFO),
+            "AMD Ryzen 5 3600 6-Core Processor".to_string()
+        )
+    }
+    #[test]
+    fn gets_total_clock_speed() {
+        assert_eq!(Get::_total_clock_speed(&tests::CPU_INFO), 26040.395)
+    }
+    #[test]
+    fn gets_total_cpu_cores() {
+        assert_eq!(Get::_total_cpu_cores(&tests::CPU_INFO), 12)
+    }
+    #[test]
+    fn gets_mem_free() {
+        assert_eq!(Get::_mem(Memory::MemFree, &tests::MEM_INFO), 10178555904);
+    }
+    #[test]
+    fn gets_mem_total() {
+        assert_eq!(Get::_mem(Memory::MemTotal, &tests::MEM_INFO), 16714952704);
+    }
+    #[test]
+    fn gets_swap_free() {
+        assert_eq!(Get::_mem(Memory::SwapFree, &tests::MEM_INFO), 0);
+    }
+    #[test]
+    fn gets_swap_total() {
+        assert_eq!(Get::_mem(Memory::SwapTotal, &tests::MEM_INFO), 0);
+    }
+    #[test]
+    fn gets_ipv4_addr() {
+        assert_eq!(
+            Get::_ipv4_addr("wlan0", &tests::ROUTE, &tests::FIB_TRIE).unwrap(),
+            Ipv4Addr::new(192, 168, 8, 201)
+        );
+        assert_eq!(
+            Get::_ipv4_addr("lo", &tests::ROUTE, &tests::FIB_TRIE).unwrap(),
+            Ipv4Addr::new(127, 0, 0, 1)
+        )
+    }
+    #[test]
+    fn gets_ipv6_addr() {
+        assert_eq!(
+            Get::_ipv6_addr("wlan0", &tests::IF_INET6).unwrap(),
+            Ipv6Addr::new(0xfe80, 0, 0, 0, 0xd81, 0x2a0d, 0x8467, 0xda1c)
+        );
+    }
+    #[test]
+    fn gets_uptime() {
+        assert_eq!(Get::_uptime(&tests::UPTIME), 52662.34)
+    }
+    #[test]
+    fn gets_graphics_card() {
+        assert_eq!(
+            Get::_graphics_card(&tests::LSPCI),
+            "NVIDIA Corporation GK106 [GeForce GTX 660] (rev a1)"
+        )
+    }
+}
 
 pub const CPU_INFO: &str = "processor       : 0
 vendor_id       : AuthenticAMD
@@ -438,3 +504,11 @@ Local:
               /32 link BROADCAST";
 
 pub const UPTIME: &str = "52662.34 619766.90";
+
+pub const IF_INET6: &str = "fe800000000000000d812a0d8467da1c 04 40 20 80    wlan0
+fe800000000000009879b5d0240418bf 01 40 20 80       lo
+fe80000000000000f17b7100b5a1f781 05 40 20 80     tun0
+00000000000000000000000000000001 01 80 10 80       lo";
+
+pub const LSPCI: &str =
+    "09:00.0 VGA compatible controller: NVIDIA Corporation GK106 [GeForce GTX 660] (rev a1)";
