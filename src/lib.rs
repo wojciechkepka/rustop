@@ -38,6 +38,9 @@ pub enum SysProperty {
     StorMounts,
     SysBlockDev,
     Temperature,
+    Route,
+    FibTrie,
+    IfInet6,
 }
 impl SysProperty {
     pub fn path(self) -> &'static Path {
@@ -52,6 +55,9 @@ impl SysProperty {
             SysProperty::SysBlockDev => &Path::new("/sys/block/*"),
             SysProperty::CpuInfo => &Path::new("/proc/cpuinfo"),
             SysProperty::Temperature => &Path::new("/sys/class/hwmon"),
+            SysProperty::Route => &Path::new("/proc/net/route"),
+            SysProperty::FibTrie => &Path::new("/proc/net/fib_trie"),
+            SysProperty::IfInet6 => &Path::new("/proc/net/if_inet6"),
         }
     }
 }
@@ -370,10 +376,10 @@ impl Get {
     }
 
     pub async fn network_dev() -> Result<NetworkDevices> {
-        let route = fs::read_to_string("/proc/net/route")?;
-        let fib_trie = fs::read_to_string("/proc/net/fib_trie")?;
+        let route = fs::read_to_string(SysProperty::Route.path())?;
+        let fib_trie = fs::read_to_string(SysProperty::FibTrie.path())?;
         let net_dev = fs::read_to_string(SysProperty::NetDev.path())?;
-        let if_inet = fs::read_to_string("/proc/net/if_inet6")?;
+        let if_inet = fs::read_to_string(SysProperty::IfInet6.path())?;
         Self::_network_dev(&net_dev, &route, &fib_trie, &if_inet)
     }
     pub(crate) fn _network_dev(
@@ -536,8 +542,8 @@ impl Get {
 
     #[allow(dead_code)]
     async fn ipv4_addr(interface_name: &str) -> Result<Ipv4Addr> {
-        let route = fs::read_to_string("/proc/net/route")?;
-        let fib_trie = fs::read_to_string("/proc/net/fib_trie")?;
+        let route = fs::read_to_string(SysProperty::Route.path())?;
+        let fib_trie = fs::read_to_string(SysProperty::FibTrie.path())?;
         Self::_ipv4_addr(&interface_name, &route, &fib_trie)
     }
 
@@ -578,7 +584,7 @@ impl Get {
 
     #[allow(dead_code)]
     async fn ipv6_addr(interface_name: &str) -> Result<Ipv6Addr> {
-        let output = fs::read_to_string("/proc/net/if_inet6")?;
+        let output = fs::read_to_string(SysProperty::IfInet6.path())?;
         Self::_ipv6_addr(&interface_name, &output)
     }
 
