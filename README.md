@@ -5,6 +5,9 @@ All important information about your system in one place.
   
 `rustop` gathers information from ***procfs*** so for now support is limited to Linux.
 ## Installing
+### AUR
+`rustop` is available on AUR. Use your favourite AUR helper to install the package `rustop-git`
+- `yay -S rustop-git`
 ### Cargo
 - `cargo install rustop-rs`
 ### Manually
