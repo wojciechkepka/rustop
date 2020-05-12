@@ -183,27 +183,27 @@ pub struct PcInfo {
 impl PcInfo {
     pub async fn new() -> PcInfo {
         PcInfo {
-            hostname: handle(Get::sysproperty(SysProperty::Hostname).await),
-            kernel_version: handle(Get::sysproperty(SysProperty::OsRelease).await),
-            uptime: handle(Get::uptime().await),
-            cpu: handle(Get::cpu_info().await),
-            cpu_clock: handle(Get::cpu_clock().await),
-            memory: handle(Get::mem(Memory::MemTotal).await),
-            free_memory: handle(Get::mem(Memory::MemFree).await),
-            swap: handle(Get::mem(Memory::SwapTotal).await),
-            free_swap: handle(Get::mem(Memory::SwapFree).await),
-            network_dev: handle(Get::network_dev().await),
-            storage_dev: handle(Get::storage_devices().await),
-            vgs: handle(Get::vgs().await),
-            graphics_card: handle(Get::graphics_card().await),
-            temps: handle(Get::temperatures().await),
+            hostname: handle(ProcFs::sysproperty(SysProperty::Hostname).await),
+            kernel_version: handle(ProcFs::sysproperty(SysProperty::OsRelease).await),
+            uptime: handle(ProcFs::uptime().await),
+            cpu: handle(ProcFs::cpu_info().await),
+            cpu_clock: handle(ProcFs::cpu_clock().await),
+            memory: handle(ProcFs::mem(Memory::MemTotal).await),
+            free_memory: handle(ProcFs::mem(Memory::MemFree).await),
+            swap: handle(ProcFs::mem(Memory::SwapTotal).await),
+            free_swap: handle(ProcFs::mem(Memory::SwapFree).await),
+            network_dev: handle(ProcFs::network_dev().await),
+            storage_dev: handle(ProcFs::storage_devices().await),
+            vgs: handle(ProcFs::vgs().await),
+            graphics_card: handle(ProcFs::graphics_card().await),
+            temps: handle(ProcFs::temperatures().await),
         }
     }
 }
 
 #[derive(Debug)]
-pub struct Get;
-impl Get {
+pub struct ProcFs;
+impl ProcFs {
     pub async fn sysproperty(property: SysProperty) -> Result<String> {
         let path = match property {
             // Use or-patterns when they become stable
@@ -276,7 +276,7 @@ impl Get {
     }
 
     pub async fn cpu_clock() -> Result<f32> {
-        Ok(Get::total_clock_speed().await? / Get::total_cpu_cores().await? as f32)
+        Ok(ProcFs::total_clock_speed().await? / ProcFs::total_cpu_cores().await? as f32)
     }
 
     pub async fn network_dev() -> Result<NetworkDevices> {
@@ -300,8 +300,8 @@ impl Get {
                 name: network_dev[1].to_string(),
                 received_bytes: handle(network_dev[2].parse::<u64>()),
                 transfered_bytes: handle(network_dev[3].parse::<u64>()),
-                ipv4_addr: Get::_ipv4_addr(&network_dev[1], &route, &fib_trie)?,
-                ipv6_addr: Get::_ipv6_addr(&network_dev[1], &if_inet)?,
+                ipv4_addr: ProcFs::_ipv4_addr(&network_dev[1], &route, &fib_trie)?,
+                ipv6_addr: ProcFs::_ipv6_addr(&network_dev[1], &if_inet)?,
             });
         }
         Ok(NetworkDevices {
@@ -333,7 +333,7 @@ impl Get {
                 minor: handle(storage_dev[2].parse::<u16>()),
                 size: handle(storage_dev[3].parse::<u64>()) * 1024,
                 name: storage_dev[4].to_string(),
-                partitions: Get::_storage_partitions(&storage_dev[4], &stor_dev, &stor_mounts),
+                partitions: ProcFs::_storage_partitions(&storage_dev[4], &stor_dev, &stor_mounts),
             });
         }
 
@@ -403,7 +403,7 @@ impl Get {
                     format: vg[2].to_string(),
                     status: vg[3].to_string(),
                     size: handle(vg[4].parse::<u64>()),
-                    lvms: handle(Get::lvms(vg[1].to_string()).await),
+                    lvms: handle(ProcFs::lvms(vg[1].to_string()).await),
                 })
             }
         }
@@ -535,17 +535,7 @@ impl Get {
                 }
             }
             for i in 1..=sensor_count {
-                let mut sensor = Sensor::default();
-                sensor.name = fs::read_to_string(path.join(format!("temp{}_label", i)))
-                    .unwrap_or_else(|_| "".to_string())
-                    .trim()
-                    .to_string();
-                sensor.temp = handle(
-                    fs::read_to_string(path.join(format!("temp{}_input", i)))?
-                        .trim()
-                        .parse::<f32>(),
-                ) / 1000.;
-                dev_temps.push(sensor);
+                dev_temps.push(Self::sensor(&path, i).await?);
             }
             dev.sensors = dev_temps;
             devices.push(dev);
@@ -553,5 +543,20 @@ impl Get {
         Ok(Temperatures {
             temp_devices: devices,
         })
+    }
+
+    pub async fn sensor<P: AsRef<Path>>(path: P, i: i32) -> Result<Sensor> {
+        let mut sensor = Sensor::default();
+        sensor.name = fs::read_to_string(path.as_ref().join(format!("temp{}_label", i)))
+            .unwrap_or_else(|_| "".to_string())
+            .trim()
+            .to_string();
+        sensor.temp = handle(
+            fs::read_to_string(path.as_ref().join(format!("temp{}_input", i)))?
+                .trim()
+                .parse::<f32>(),
+        ) / 1000.;
+
+        Ok(sensor)
     }
 }
