@@ -108,7 +108,7 @@ impl NetworkDevice {
                 r"([\d\w]*):\s*(\d*)\s*\d*\s*\d*\s*\d*\s*\d*\s*\d*\s*\d*\s*\d*\s*(\d*)",
             )?;
             for network_dev in re.captures_iter(&net_dev) {
-                if self.name == network_dev[1].to_string() {
+                if self.name == network_dev[1] {
                     if secs == interval.as_secs() {
                         first_rx = network_dev[2].parse::<f64>()?;
                         first_tx = network_dev[3].parse::<f64>()?;
@@ -123,7 +123,7 @@ impl NetworkDevice {
             current_rx = (last_rx - first_rx) / (interval.as_secs() - secs) as f64;
             current_tx = (last_tx - first_tx) / (interval.as_secs() - secs) as f64;
 
-            if secs <= 0 {
+            if secs == 0 {
                 break;
             }
             secs -= 1;
