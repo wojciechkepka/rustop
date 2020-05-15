@@ -47,6 +47,10 @@ impl Default for ProcessState {
 pub struct Process {
     /// The process ID.
     pub pid: u32,
+    /// Binary application name of this process
+    pub name: String,
+    /// Full command with arguments
+    pub cmd: String,
     /// The process state
     pub state: ProcessState,
     /// The PID of the parent of this process.
@@ -79,6 +83,7 @@ impl Process {
         let (uid, gid) = Self::uid_gid(pid)?;
         proc.uid = uid;
         proc.gid = gid;
+        proc.cmd = Self::cmd(pid)?;
 
         Ok(proc)
     }
@@ -97,7 +102,12 @@ impl Process {
         if let Some(pid) = attrs.next() {
             self.pid = pid.parse::<u32>()?;
         }
-        let _ = attrs.next();
+        if let Some(name) = attrs.next() {
+            self.name = name
+                .trim_start_matches("(")
+                .trim_end_matches(")")
+                .to_string();
+        }
         if let Some(state) = attrs.next() {
             self.state = ProcessState::from(state.chars().next().unwrap())
         }
@@ -141,7 +151,7 @@ impl Process {
         Ok(())
     }
 
-    /// Returns (uid, gid) of specified process
+    /// Returns (uid, gid) of process
     pub(crate) fn uid_gid(pid: u32) -> Result<(u32, u32)> {
         let p = PathBuf::from(format!("/proc/{}", pid));
         let status = fs::read_to_string(p.join("status"))?;
@@ -156,5 +166,14 @@ impl Process {
             gid = m[1].parse::<u32>()?;
         }
         Ok((uid, gid))
+    }
+
+    /// Returns a full command line of process
+    pub(crate) fn cmd(pid: u32) -> Result<String> {
+        let p = PathBuf::from(format!("/proc/{}", pid));
+        match fs::read_to_string(p.join("cmdline")) {
+            Ok(cmd) => Ok(cmd.trim_end_matches("\u{0}").to_string()),
+            Err(e) => Err(anyhow!("{}", e)),
+        }
     }
 }
