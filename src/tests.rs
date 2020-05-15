@@ -3,6 +3,7 @@ use super::*;
 
 #[cfg(test)]
 mod gets {
+    use self::ps::*;
     use super::*;
     #[test]
     fn cpu_info() {
@@ -229,6 +230,28 @@ mod gets {
             .unwrap(),
             net_dev
         )
+    }
+    #[test]
+    fn process() {
+        let base = Process {
+            pid: 17008,
+            state: ProcessState::Sleeping,
+            ppid: 5868,
+            pgrp: 17008,
+            utime: 1169,
+            stime: 4309,
+            size: 2926,
+            resident: 1266,
+            shared: 827,
+            uid: 0,
+            gid: 0,
+        };
+
+        let mut proc = Process::default();
+        proc.parse_proc_stat(&PROC_STAT).unwrap();
+        proc.parse_proc_statm(&PROC_STATM).unwrap();
+
+        assert_eq!(base, proc);
     }
 }
 
@@ -741,3 +764,7 @@ static NET_DEV: &str = "Inter-|   Receive                                       
      enp8s0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
       wlan0: 1177144648  929250    0    0    0     0          0         0 59578768  534269    0    0    0     0       0          0
         tun0: 24156600   41069    0    0    0     0          0         0  3623219   43984    0    0    0     0       0          0";
+
+static PROC_STAT: &str = "17008 (htop) S 5868 17008 5868 34823 17008 4194560 557 0 0 0 1169 4309 0 0 20 0 1 0 3236493 11984896 1266 18446744073709551615 94222821875712 94222821963109 140735121616416 0 0 0 0 0 134759430 0 0 0 17 6 0 0 0 0 0 94222822005680 94222822021792 94222838616064 140735121623809 140735121623814 140735121623814 140735121625066 0";
+
+static PROC_STATM: &str = "2926 1266 827 22 0 489 0";

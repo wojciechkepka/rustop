@@ -1,6 +1,7 @@
 mod display;
 pub mod opt;
 pub mod out;
+pub mod ps;
 mod tests;
 mod utils;
 use anyhow::{anyhow, Result};
