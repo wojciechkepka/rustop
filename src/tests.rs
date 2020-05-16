@@ -235,6 +235,8 @@ mod gets {
     fn process() {
         let base = Process {
             pid: 17008,
+            name: "htop".to_string(),
+            cmd: "htop -t --no-color".to_string(),
             state: ProcessState::Sleeping,
             ppid: 5868,
             pgrp: 17008,
@@ -250,6 +252,7 @@ mod gets {
         let mut proc = Process::default();
         proc.parse_proc_stat(&PROC_STAT).unwrap();
         proc.parse_proc_statm(&PROC_STATM).unwrap();
+        proc.cmd = Process::_cmd(&PROC_CMDLINE);
 
         assert_eq!(base, proc);
     }
@@ -768,3 +771,5 @@ static NET_DEV: &str = "Inter-|   Receive                                       
 static PROC_STAT: &str = "17008 (htop) S 5868 17008 5868 34823 17008 4194560 557 0 0 0 1169 4309 0 0 20 0 1 0 3236493 11984896 1266 18446744073709551615 94222821875712 94222821963109 140735121616416 0 0 0 0 0 134759430 0 0 0 17 6 0 0 0 0 0 94222822005680 94222822021792 94222838616064 140735121623809 140735121623814 140735121623814 140735121625066 0";
 
 static PROC_STATM: &str = "2926 1266 827 22 0 489 0";
+
+static PROC_CMDLINE: &str = "htop\u{0}-t\u{0}--no-color\u{0}";
