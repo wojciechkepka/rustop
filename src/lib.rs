@@ -2,8 +2,10 @@ mod display;
 pub mod opt;
 pub mod out;
 pub mod ps;
+pub mod storage;
 mod tests;
 mod utils;
+use self::storage::*;
 use anyhow::{anyhow, Result};
 use async_std::fs::read_to_string;
 use regex::Regex;
@@ -135,59 +137,6 @@ impl NetworkDevice {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
-pub struct Storage {
-    name: String,
-    major: u16,
-    minor: u16,
-    size: u64,
-    partitions: Vec<Partition>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
-pub struct Partition {
-    name: String,
-    major: u16,
-    minor: u16,
-    size: u64,
-    filesystem: String,
-    mountpoint: String,
-}
-
-impl Partition {
-    fn new() -> Partition {
-        Partition {
-            name: "".to_string(),
-            major: 0,
-            minor: 0,
-            size: 0,
-            filesystem: "".to_string(),
-            mountpoint: "".to_string(),
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct VolGroup {
-    name: String,
-    format: String,
-    status: String,
-    size: u64,
-    lvms: Vec<LogVolume>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct LogVolume {
-    name: String,
-    vg: String,
-    path: String,
-    status: String,
-    major: u16,
-    minor: u16,
-    size: u64,
-    mountpoint: String,
-}
-
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct Sensor {
     name: String,
@@ -206,18 +155,9 @@ pub struct Temperatures {
     pub temp_devices: Vec<DeviceSensors>,
 }
 
-type Partitions = Vec<Partition>;
 #[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]
 pub struct NetworkDevices {
     pub net_devices: Vec<NetworkDevice>,
-}
-#[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]
-pub struct Storages {
-    pub storage_devices: Vec<Storage>,
-}
-#[derive(Serialize, Deserialize, Debug, Default)]
-pub struct VolGroups {
-    pub vgs: Vec<VolGroup>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default)]
