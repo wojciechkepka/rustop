@@ -8,63 +8,63 @@ mod gets {
     #[test]
     fn cpu_info() {
         assert_eq!(
-            ProcFs::_cpu_info(&tests::CPU_INFO),
+            procfs::_cpu_info(&tests::CPU_INFO),
             "AMD Ryzen 5 3600 6-Core Processor".to_string()
         )
     }
     #[test]
     fn total_clock_speed() {
-        assert_eq!(ProcFs::_total_clock_speed(&tests::CPU_INFO), 26040.395)
+        assert_eq!(procfs::_total_clock_speed(&tests::CPU_INFO), 26040.395)
     }
     #[test]
     fn total_cpu_cores() {
-        assert_eq!(ProcFs::_total_cpu_cores(&tests::CPU_INFO), 12)
+        assert_eq!(procfs::_total_cpu_cores(&tests::CPU_INFO), 12)
     }
     #[test]
     fn mem_free() {
-        assert_eq!(ProcFs::_mem(Memory::MemFree, &tests::MEM_INFO), 10178555904);
+        assert_eq!(procfs::_mem(Memory::MemFree, &tests::MEM_INFO), 10178555904);
     }
     #[test]
     fn mem_total() {
         assert_eq!(
-            ProcFs::_mem(Memory::MemTotal, &tests::MEM_INFO),
+            procfs::_mem(Memory::MemTotal, &tests::MEM_INFO),
             16714952704
         );
     }
     #[test]
     fn swap_free() {
-        assert_eq!(ProcFs::_mem(Memory::SwapFree, &tests::MEM_INFO), 0);
+        assert_eq!(procfs::_mem(Memory::SwapFree, &tests::MEM_INFO), 0);
     }
     #[test]
     fn swap_total() {
-        assert_eq!(ProcFs::_mem(Memory::SwapTotal, &tests::MEM_INFO), 0);
+        assert_eq!(procfs::_mem(Memory::SwapTotal, &tests::MEM_INFO), 0);
     }
     #[test]
     fn ipv4_addr() {
         assert_eq!(
-            ProcFs::_ipv4_addr("wlan0", &tests::ROUTE, &tests::FIB_TRIE).unwrap(),
+            procfs::_ipv4_addr("wlan0", &tests::ROUTE, &tests::FIB_TRIE).unwrap(),
             Ipv4Addr::new(192, 168, 8, 201)
         );
         assert_eq!(
-            ProcFs::_ipv4_addr("lo", &tests::ROUTE, &tests::FIB_TRIE).unwrap(),
+            procfs::_ipv4_addr("lo", &tests::ROUTE, &tests::FIB_TRIE).unwrap(),
             Ipv4Addr::new(127, 0, 0, 1)
         )
     }
     #[test]
     fn ipv6_addr() {
         assert_eq!(
-            ProcFs::_ipv6_addr("wlan0", &tests::IF_INET6).unwrap(),
+            procfs::_ipv6_addr("wlan0", &tests::IF_INET6).unwrap(),
             Ipv6Addr::new(0xfe80, 0, 0, 0, 0xd81, 0x2a0d, 0x8467, 0xda1c)
         );
     }
     #[test]
     fn uptime() {
-        assert_eq!(ProcFs::_uptime(&tests::UPTIME), 52662.34)
+        assert_eq!(procfs::_uptime(&tests::UPTIME), 52662.34)
     }
     #[test]
     fn graphics_card() {
         assert_eq!(
-            ProcFs::_graphics_card(&tests::LSPCI),
+            procfs::_graphics_card(&tests::LSPCI),
             "NVIDIA Corporation GK106 [GeForce GTX 660] (rev a1)"
         )
     }
@@ -89,7 +89,7 @@ mod gets {
             },
         ];
         assert_eq!(
-            ProcFs::_storage_partitions("sdd", &tests::STOR_DEV, &tests::STOR_MOUNTS),
+            procfs::_storage_partitions("sdd", &tests::STOR_DEV, &tests::STOR_MOUNTS),
             partitions
         )
     }
@@ -182,7 +182,7 @@ mod gets {
             storage_devices: devices,
         };
         assert_eq!(
-            ProcFs::_storage_devices(&tests::STOR_DEV, &tests::STOR_MOUNTS),
+            procfs::_storage_devices(&tests::STOR_DEV, &tests::STOR_MOUNTS),
             storages
         );
     }
@@ -221,7 +221,7 @@ mod gets {
             ],
         };
         assert_eq!(
-            ProcFs::_network_dev(
+            procfs::_network_dev(
                 &tests::NET_DEV,
                 &tests::ROUTE,
                 &tests::FIB_TRIE,

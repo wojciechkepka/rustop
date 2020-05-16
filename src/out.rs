@@ -76,28 +76,28 @@ pub fn normal_out(p: &PcInfo, opts: &Opt) -> String {
 
 pub async fn get_property(property: &str) -> Result<()> {
     match &property[..] {
-        "hostname" => println!("{}", ProcFs::sysproperty(SysProperty::Hostname).await?),
-        "kernel" => println!("{}", ProcFs::sysproperty(SysProperty::OsRelease).await?),
-        "uptime" => println!("{}", ProcFs::uptime().await?),
-        "cpu" => println!("{}", ProcFs::cpu_info().await?),
-        "cpuclock" => println!("{}", ProcFs::cpu_clock().await?),
-        "memory" => println!("{}", ProcFs::mem(Memory::MemTotal).await?),
-        "fmemory" => println!("{}", ProcFs::mem(Memory::MemFree).await?),
-        "swap" => println!("{}", ProcFs::mem(Memory::SwapTotal).await?),
-        "fswap" => println!("{}", ProcFs::mem(Memory::SwapFree).await?),
+        "hostname" => println!("{}", procfs::sysproperty(SysProperty::Hostname).await?),
+        "kernel" => println!("{}", procfs::sysproperty(SysProperty::OsRelease).await?),
+        "uptime" => println!("{}", procfs::uptime().await?),
+        "cpu" => println!("{}", procfs::cpu_info().await?),
+        "cpuclock" => println!("{}", procfs::cpu_clock().await?),
+        "memory" => println!("{}", procfs::mem(Memory::MemTotal).await?),
+        "fmemory" => println!("{}", procfs::mem(Memory::MemFree).await?),
+        "swap" => println!("{}", procfs::mem(Memory::SwapTotal).await?),
+        "fswap" => println!("{}", procfs::mem(Memory::SwapFree).await?),
         "network" => println!(
             "{}",
-            serde_json::to_string_pretty(&ProcFs::network_dev().await?)?
+            serde_json::to_string_pretty(&procfs::network_dev().await?)?
         ),
         "storage" => println!(
             "{}",
-            serde_json::to_string_pretty(&ProcFs::storage_devices().await?)?
+            serde_json::to_string_pretty(&procfs::storage_devices().await?)?
         ),
-        "vgs" => println!("{}", serde_json::to_string_pretty(&ProcFs::vgs().await?)?),
-        "graphics" => println!("{}", ProcFs::graphics_card().await?),
+        "vgs" => println!("{}", serde_json::to_string_pretty(&procfs::vgs().await?)?),
+        "graphics" => println!("{}", procfs::graphics_card().await?),
         "temperatures" => println!(
             "{}",
-            serde_json::to_string_pretty(&ProcFs::temperatures().await?)?
+            serde_json::to_string_pretty(&procfs::temperatures().await?)?
         ),
         _ => println!("unsupported property"),
     }
