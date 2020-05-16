@@ -2,9 +2,6 @@
 use super::*;
 use std::path::PathBuf;
 
-// Remember to use libc::_SC_CLK_TCK to measure CPU time
-// and libc::_SC_PAGE_SIZE for memory
-
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub enum ProcessState {
     Running,
@@ -88,11 +85,57 @@ impl Process {
         Ok(proc)
     }
 
+    /// Returns virtual memory allocated by process in bytes
+    pub fn size(&self) -> u64 {
+        self.size * utils::page_size()
+    }
+
+    /// Returns memory resident set size of process in bytes
+    pub fn resident(&self) -> u64 {
+        self.resident * utils::page_size()
+    }
+
+    /// Returns size of resident shared pages of process in bytes
+    pub fn shared(&self) -> u64 {
+        self.shared * utils::page_size()
+    }
+
+    /// Returns cpu time spent by this process (kernel + user)
+    /// in seconds.
+    pub fn cpu_time(&self) -> f64 {
+        self.utime() + self.stime()
+    }
+
+    /// Amount of time that this process has been scheduled
+    /// in user mode, measured in seconds
+    pub fn utime(&self) -> f64 {
+        self.utime as f64 / utils::clk_tick() as f64
+    }
+
+    /// Amount of time that this process has been scheduled
+    /// in kernel mode, measured in seconds
+    pub fn stime(&self) -> f64 {
+        self.stime as f64 / utils::clk_tick() as f64
+    }
+
+    /// Updates all fields of current process
+    pub fn update(&mut self) -> Result<()> {
+        self.update_stat()?;
+        self.update_statm()
+    }
+
     /// Re-reads /proc/[pid]/stat file and updates struct fields
     fn update_stat(&mut self) -> Result<()> {
         let p = PathBuf::from(format!("/proc/{}", self.pid));
         let stats = fs::read_to_string(p.join("stat"))?;
         self.parse_proc_stat(&stats)
+    }
+
+    /// Re-reads /proc/[pid]/statm file and updates struct fields
+    fn update_statm(&mut self) -> Result<()> {
+        let p = PathBuf::from(format!("/proc/{}", self.pid));
+        let stats = fs::read_to_string(p.join("statm"))?;
+        self.parse_proc_statm(&stats)
     }
 
     /// Internal function to parse out interesting attributes
@@ -133,12 +176,6 @@ impl Process {
         }
 
         Ok(())
-    }
-
-    fn update_statm(&mut self) -> Result<()> {
-        let p = PathBuf::from(format!("/proc/{}", self.pid));
-        let stats = fs::read_to_string(p.join("statm"))?;
-        self.parse_proc_statm(&stats)
     }
 
     /// Internal function to parse out interesting attributes
