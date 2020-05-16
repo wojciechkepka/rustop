@@ -100,8 +100,8 @@ pub struct PcInfo {
 impl PcInfo {
     pub async fn new() -> PcInfo {
         PcInfo {
-            hostname: handle(procfs::sysproperty(SysProperty::Hostname).await),
-            kernel_version: handle(procfs::sysproperty(SysProperty::OsRelease).await),
+            hostname: handle(procfs::hostname().await),
+            kernel_version: handle(procfs::os_release().await),
             uptime: handle(procfs::uptime().await),
             cpu: handle(procfs::cpu_info().await),
             cpu_clock: handle(procfs::cpu_clock().await),

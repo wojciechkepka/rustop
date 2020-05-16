@@ -76,8 +76,8 @@ pub fn normal_out(p: &PcInfo, opts: &Opt) -> String {
 
 pub async fn get_property(property: &str) -> Result<()> {
     match &property[..] {
-        "hostname" => println!("{}", procfs::sysproperty(SysProperty::Hostname).await?),
-        "kernel" => println!("{}", procfs::sysproperty(SysProperty::OsRelease).await?),
+        "hostname" => println!("{}", procfs::hostname().await?),
+        "kernel" => println!("{}", procfs::os_release().await?),
         "uptime" => println!("{}", procfs::uptime().await?),
         "cpu" => println!("{}", procfs::cpu_info().await?),
         "cpuclock" => println!("{}", procfs::cpu_clock().await?),

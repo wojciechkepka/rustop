@@ -1,13 +1,15 @@
 use super::*;
 
-pub async fn sysproperty(property: SysProperty) -> Result<String> {
-    let path = match property {
-        // Use or-patterns when they become stable
-        p @ SysProperty::OsRelease => p.path(),
-        p @ SysProperty::Hostname => p.path(),
-        p => return Err(anyhow!("Invalid system property {:?}", p)),
-    };
-    Ok(String::from(fs::read_to_string(path)?.trim_end()))
+pub async fn os_release() -> Result<String> {
+    Ok(fs::read_to_string(SysProperty::OsRelease.path())?
+        .trim_end()
+        .to_string())
+}
+
+pub async fn hostname() -> Result<String> {
+    Ok(fs::read_to_string(SysProperty::Hostname.path())?
+        .trim_end()
+        .to_string())
 }
 
 pub async fn uptime() -> Result<f64> {
