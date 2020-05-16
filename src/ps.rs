@@ -98,14 +98,14 @@ impl Process {
     /// Internal function to parse out interesting attributes
     /// about a process from /self/[pid]/stat
     pub(crate) fn parse_proc_stat(&mut self, out: &str) -> Result<()> {
-        let mut attrs = out.split(" ");
+        let mut attrs = out.split(' ');
         if let Some(pid) = attrs.next() {
             self.pid = pid.parse::<u32>()?;
         }
         if let Some(name) = attrs.next() {
             self.name = name
-                .trim_start_matches("(")
-                .trim_end_matches(")")
+                .trim_start_matches('(')
+                .trim_end_matches(')')
                 .to_string();
         }
         if let Some(state) = attrs.next() {
@@ -137,7 +137,7 @@ impl Process {
     /// Internal function to parse out interesting attributes
     /// about process memory from /self/[pid]/statm
     pub(crate) fn parse_proc_statm(&mut self, out: &str) -> Result<()> {
-        let mut attrs = out.split(" ");
+        let mut attrs = out.split(' ');
         if let Some(size) = attrs.next() {
             self.size = size.parse::<u64>()?;
         }
@@ -169,11 +169,14 @@ impl Process {
     }
 
     /// Returns a full command line of process
-    pub(crate) fn cmd(pid: u32) -> Result<String> {
+    pub fn cmd(pid: u32) -> Result<String> {
         let p = PathBuf::from(format!("/proc/{}", pid));
         match fs::read_to_string(p.join("cmdline")) {
-            Ok(cmd) => Ok(cmd.trim_end_matches("\u{0}").to_string()),
+            Ok(out) => Ok(Self::_cmd(&out)),
             Err(e) => Err(anyhow!("{}", e)),
         }
+    }
+    pub(crate) fn _cmd(out: &str) -> String {
+        out.trim_end_matches('\u{0}').replace('\u{0}', &" ")
     }
 }
