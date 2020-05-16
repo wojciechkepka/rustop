@@ -11,7 +11,7 @@ pub struct Storage {
     pub partitions: Vec<Partition>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]
 pub struct Partition {
     pub name: String,
     pub major: u16,
@@ -19,19 +19,6 @@ pub struct Partition {
     pub size: u64,
     pub filesystem: String,
     pub mountpoint: String,
-}
-
-impl Partition {
-    pub fn new() -> Partition {
-        Partition {
-            name: "".to_string(),
-            major: 0,
-            minor: 0,
-            size: 0,
-            filesystem: "".to_string(),
-            mountpoint: "".to_string(),
-        }
-    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]

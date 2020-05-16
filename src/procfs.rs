@@ -158,7 +158,7 @@ pub(crate) fn _storage_partitions(
         .captures_iter(&stor_dev)
         .filter(|x| x[4].starts_with(stor_name))
     {
-        let mut partition = Partition::new();
+        let mut partition = Partition::default();
         let partition_name = &storage_dev[4];
 
         for found_partition in re2.captures_iter(&stor_mounts) {
