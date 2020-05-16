@@ -73,9 +73,9 @@ pub fn is_numeric(s: &str) -> bool {
 }
 
 pub fn page_size() -> u64 {
-    unsafe { return libc::sysconf(libc::_SC_PAGE_SIZE) as u64 }
+    unsafe { libc::sysconf(libc::_SC_PAGE_SIZE) as u64 }
 }
 
 pub fn clk_tick() -> u64 {
-    unsafe { return libc::sysconf(libc::_SC_CLK_TCK) as u64 }
+    unsafe { libc::sysconf(libc::_SC_CLK_TCK) as u64 }
 }
