@@ -62,3 +62,12 @@ pub fn conv_hex_to_ip(hex_addr: &str) -> Result<String> {
         Ok("".to_string())
     }
 }
+
+pub fn is_numeric(s: &str) -> bool {
+    for c in s.chars() {
+        if !c.is_numeric() {
+            return false;
+        }
+    }
+    true
+}

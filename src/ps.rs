@@ -98,15 +98,22 @@ impl Process {
     /// Internal function to parse out interesting attributes
     /// about a process from /self/[pid]/stat
     pub(crate) fn parse_proc_stat(&mut self, out: &str) -> Result<()> {
-        let mut attrs = out.split(' ');
+        let mut attrs = out.split(' ').peekable();
         if let Some(pid) = attrs.next() {
             self.pid = pid.parse::<u32>()?;
         }
         if let Some(name) = attrs.next() {
-            self.name = name
-                .trim_start_matches('(')
-                .trim_end_matches(')')
-                .to_string();
+            let mut n = String::from(name);
+            if !name.ends_with(')') {
+                while !attrs.peek().unwrap().ends_with(')') {
+                    n.push(' ');
+                    n.push_str(attrs.next().unwrap());
+                }
+                // Last one containing ')' at the end
+                n.push(' ');
+                n.push_str(attrs.next().unwrap());
+            }
+            self.name = n.trim_start_matches('(').trim_end_matches(')').to_string();
         }
         if let Some(state) = attrs.next() {
             self.state = ProcessState::from(state.chars().next().unwrap())
@@ -179,4 +186,19 @@ impl Process {
     pub(crate) fn _cmd(out: &str) -> String {
         out.trim_end_matches('\u{0}').replace('\u{0}', &" ")
     }
+}
+
+type Processes = Vec<Process>;
+pub fn tree() -> Result<Processes> {
+    let mut ps = Vec::new();
+    for entry in fs::read_dir("/proc")? {
+        let e = entry.unwrap();
+        if let Some(name) = e.path().file_name() {
+            let _name = name.to_string_lossy();
+            if utils::is_numeric(&_name) {
+                ps.push(Process::new(_name.parse::<u32>()?)?);
+            }
+        }
+    }
+    Ok(ps)
 }
