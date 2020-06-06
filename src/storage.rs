@@ -47,7 +47,25 @@ pub struct Storages {
     pub storage_devices: Vec<Storage>,
 }
 
+impl IntoIterator for Storages {
+    type Item = Storage;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.storage_devices.into_iter()
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct VolGroups {
     pub vgs: Vec<VolGroup>,
+}
+
+impl IntoIterator for VolGroups {
+    type Item = VolGroup;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.vgs.into_iter()
+    }
 }

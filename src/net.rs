@@ -32,9 +32,7 @@ impl NetworkDevice {
         let mut secs = interval.as_secs();
         loop {
             let net_dev = read_to_string(SysProperty::NetDev.path()).await?;
-            let re = Regex::new(
-                r"([\d\w]*):\s*(\d*)\s*\d*\s*\d*\s*\d*\s*\d*\s*\d*\s*\d*\s*\d*\s*(\d*)",
-            )?;
+            let re = Regex::new(r"([\d\w]*):\s*(\d*)\s*\d*\s*\d*\s*\d*\s*\d*\s*\d*\s*\d*\s*\d*\s*(\d*)")?;
             for network_dev in re.captures_iter(&net_dev) {
                 if self.name == network_dev[1] {
                     if secs == interval.as_secs() {
@@ -65,4 +63,13 @@ impl NetworkDevice {
 #[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]
 pub struct NetworkDevices {
     pub net_devices: Vec<NetworkDevice>,
+}
+
+impl IntoIterator for NetworkDevices {
+    type Item = NetworkDevice;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.net_devices.into_iter()
+    }
 }

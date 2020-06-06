@@ -17,3 +17,12 @@ pub struct DeviceSensors {
 pub struct Temperatures {
     pub temp_devices: Vec<DeviceSensors>,
 }
+
+impl IntoIterator for Temperatures {
+    type Item = DeviceSensors;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.temp_devices.into_iter()
+    }
+}
