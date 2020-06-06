@@ -27,9 +27,7 @@ impl Display for PcInfo {
             self.memory.to_string().bold(),
             utils::conv_b(self.free_memory).bold(),
             self.free_memory.to_string().bold(),
-            utils::conv_p(self.memory, self.free_memory)
-                .to_string()
-                .bold(),
+            utils::conv_p(self.memory, self.free_memory).to_string().bold(),
             utils::conv_b(self.swap).bold(),
             self.swap.to_string().bold(),
             utils::conv_b(self.free_swap).bold(),
@@ -199,11 +197,6 @@ impl Display for DeviceSensors {
 }
 impl Display for Sensor {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        write!(
-            f,
-            "\n│   │         ├─{} {}°C",
-            self.name.green().bold(),
-            self.temp
-        )
+        write!(f, "\n│   │         ├─{} {}°C", self.name.green().bold(), self.temp)
     }
 }

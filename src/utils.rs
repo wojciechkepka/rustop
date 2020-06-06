@@ -26,11 +26,7 @@ pub fn conv_t(sec: f64) -> String {
     if sec < 60. {
         format!("{} seconds", sec)
     } else if 60. <= sec && sec < u64::pow(60, 2) as f64 {
-        format!(
-            "{} minutes {} seconds",
-            (sec / 60.).floor(),
-            (sec % 60.).floor()
-        )
+        format!("{} minutes {} seconds", (sec / 60.).floor(), (sec % 60.).floor())
     } else if u64::pow(60, 2) as f64 <= sec && sec < u64::pow(60, 3) as f64 {
         format!(
             "{} hours {} minutes {} seconds",

@@ -71,6 +71,7 @@ pub fn normal_out(p: &PcInfo, opts: &Opt) -> String {
     if opts.vgs {
         out.push_str(&p.vgs.to_string());
     }
+    out.push_str(&ps::ps_tree());
     out
 }
 
@@ -85,20 +86,11 @@ pub async fn get_property(property: &str) -> Result<()> {
         "fmemory" => println!("{}", procfs::mem(Memory::MemFree).await?),
         "swap" => println!("{}", procfs::mem(Memory::SwapTotal).await?),
         "fswap" => println!("{}", procfs::mem(Memory::SwapFree).await?),
-        "network" => println!(
-            "{}",
-            serde_json::to_string_pretty(&procfs::network_dev().await?)?
-        ),
-        "storage" => println!(
-            "{}",
-            serde_json::to_string_pretty(&procfs::storage_devices().await?)?
-        ),
+        "network" => println!("{}", serde_json::to_string_pretty(&procfs::network_devs().await?)?),
+        "storage" => println!("{}", serde_json::to_string_pretty(&procfs::storage_devices().await?)?),
         "vgs" => println!("{}", serde_json::to_string_pretty(&procfs::vgs().await?)?),
         "graphics" => println!("{}", procfs::graphics_card().await?),
-        "temperatures" => println!(
-            "{}",
-            serde_json::to_string_pretty(&procfs::temperatures().await?)?
-        ),
+        "temperatures" => println!("{}", serde_json::to_string_pretty(&procfs::temperatures().await?)?),
         _ => println!("unsupported property"),
     }
     Ok(())

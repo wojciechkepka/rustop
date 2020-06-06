@@ -110,7 +110,7 @@ impl PcInfo {
             free_memory: handle(procfs::mem(Memory::MemFree).await),
             swap: handle(procfs::mem(Memory::SwapTotal).await),
             free_swap: handle(procfs::mem(Memory::SwapFree).await),
-            network_dev: handle(procfs::network_dev().await),
+            network_dev: handle(procfs::network_devs().await),
             storage_dev: handle(procfs::storage_devices().await),
             vgs: handle(procfs::vgs().await),
             graphics_card: handle(procfs::graphics_card().await),

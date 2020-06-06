@@ -1,15 +1,11 @@
 use super::*;
 
 pub async fn os_release() -> Result<String> {
-    Ok(fs::read_to_string(SysProperty::OsRelease.path())?
-        .trim_end()
-        .to_string())
+    Ok(fs::read_to_string(SysProperty::OsRelease.path())?.trim_end().to_string())
 }
 
 pub async fn hostname() -> Result<String> {
-    Ok(fs::read_to_string(SysProperty::Hostname.path())?
-        .trim_end()
-        .to_string())
+    Ok(fs::read_to_string(SysProperty::Hostname.path())?.trim_end().to_string())
 }
 
 pub async fn uptime() -> Result<f64> {
@@ -31,8 +27,7 @@ pub async fn cpu_info() -> Result<String> {
 
 pub(crate) fn _cpu_info(out: &str) -> String {
     let re = Regex::new(r"model name\s*: (.*)").unwrap();
-    re.captures(&out)
-        .map_or("".to_string(), |x| x[1].to_string())
+    re.captures(&out).map_or("".to_string(), |x| x[1].to_string())
 }
 
 pub async fn mem(target: Memory) -> Result<u64> {
@@ -59,9 +54,7 @@ pub async fn total_clock_speed() -> Result<f32> {
 
 pub(crate) fn _total_clock_speed(out: &str) -> f32 {
     let re = Regex::new(r"cpu MHz\s*: (.*)").unwrap();
-    re.captures_iter(&out)
-        .map(|x| handle(x[1].parse::<f32>()))
-        .sum::<f32>()
+    re.captures_iter(&out).map(|x| handle(x[1].parse::<f32>())).sum::<f32>()
 }
 
 pub async fn total_cpu_cores() -> Result<usize> {
@@ -77,19 +70,14 @@ pub async fn cpu_clock() -> Result<f32> {
     Ok(total_clock_speed().await? / total_cpu_cores().await? as f32)
 }
 
-pub async fn network_dev() -> Result<NetworkDevices> {
+pub async fn network_devs() -> Result<NetworkDevices> {
     let route = fs::read_to_string(SysProperty::Route.path())?;
     let fib_trie = fs::read_to_string(SysProperty::FibTrie.path())?;
     let net_dev = fs::read_to_string(SysProperty::NetDev.path())?;
     let if_inet = fs::read_to_string(SysProperty::IfInet6.path())?;
-    _network_dev(&net_dev, &route, &fib_trie, &if_inet)
+    _network_devs(&net_dev, &route, &fib_trie, &if_inet)
 }
-pub(crate) fn _network_dev(
-    net_dev: &str,
-    route: &str,
-    fib_trie: &str,
-    if_inet: &str,
-) -> Result<NetworkDevices> {
+pub(crate) fn _network_devs(net_dev: &str, route: &str, fib_trie: &str, if_inet: &str) -> Result<NetworkDevices> {
     let mut devices = vec![];
     let re = Regex::new(r"([\d\w]*):\s*(\d*)\s*\d*\s*\d*\s*\d*\s*\d*\s*\d*\s*\d*\s*\d*\s*(\d*)")?;
     for network_dev in re.captures_iter(&net_dev) {
@@ -101,9 +89,7 @@ pub(crate) fn _network_dev(
             ipv6_addr: _ipv6_addr(&network_dev[1], &if_inet)?,
         });
     }
-    Ok(NetworkDevices {
-        net_devices: devices,
-    })
+    Ok(NetworkDevices { net_devices: devices })
 }
 
 pub async fn storage_devices() -> Result<Storages> {
@@ -117,9 +103,7 @@ pub(crate) fn _storage_devices(stor_dev: &str, stor_mounts: &str) -> Storages {
     let re = Regex::new(r"(?m)^\s*(\d*)\s*(\d*)\s*(\d*)\s([\w\d]*)$").unwrap();
     for storage_dev in re
         .captures_iter(&stor_dev)
-        .filter(|storage_dev| {
-            !(storage_dev[4].starts_with("loop") || storage_dev[4].starts_with("ram"))
-        })
+        .filter(|storage_dev| !(storage_dev[4].starts_with("loop") || storage_dev[4].starts_with("ram")))
         .filter(|storage_dev| {
             let stor_dev_re = Regex::new(r"^[a-z]+$").unwrap();
             stor_dev_re.is_match(&storage_dev[4].to_string())
@@ -134,9 +118,7 @@ pub(crate) fn _storage_devices(stor_dev: &str, stor_mounts: &str) -> Storages {
         });
     }
 
-    Storages {
-        storage_devices: devices,
-    }
+    Storages { storage_devices: devices }
 }
 
 #[allow(dead_code)]
@@ -146,18 +128,11 @@ async fn storage_partitions(stor_name: &str) -> Result<Partitions> {
     Ok(_storage_partitions(&stor_name, &stor_dev, &stor_mounts))
 }
 
-pub(crate) fn _storage_partitions(
-    stor_name: &str,
-    stor_dev: &str,
-    stor_mounts: &str,
-) -> Partitions {
+pub(crate) fn _storage_partitions(stor_name: &str, stor_dev: &str, stor_mounts: &str) -> Partitions {
     let mut partitions = vec![];
     let re = Regex::new(r"(?m)^\s*(\d*)\s*(\d*)\s*(\d*)\s(\w*\d+)$").unwrap();
     let re2 = Regex::new(r"/dev/(\w*)\s(\S*)\s(\S*)").unwrap();
-    for storage_dev in re
-        .captures_iter(&stor_dev)
-        .filter(|x| x[4].starts_with(stor_name))
-    {
+    for storage_dev in re.captures_iter(&stor_dev).filter(|x| x[4].starts_with(stor_name)) {
         let mut partition = Partition::default();
         let partition_name = &storage_dev[4];
 
@@ -233,8 +208,7 @@ pub async fn graphics_card() -> Result<String> {
 }
 pub(crate) fn _graphics_card(out: &str) -> String {
     let re = Regex::new(r"(?m)VGA compatible controller:\s*(.*)$").unwrap();
-    re.captures(&out)
-        .map_or("".to_string(), |vga| vga[1].to_string())
+    re.captures(&out).map_or("".to_string(), |vga| vga[1].to_string())
 }
 
 #[allow(dead_code)]
@@ -329,9 +303,7 @@ pub async fn temperatures() -> Result<Temperatures> {
         dev.sensors = dev_temps;
         devices.push(dev);
     }
-    Ok(Temperatures {
-        temp_devices: devices,
-    })
+    Ok(Temperatures { temp_devices: devices })
 }
 
 pub async fn sensor<P: AsRef<Path>>(path: P, i: i32) -> Result<Sensor> {
@@ -340,11 +312,8 @@ pub async fn sensor<P: AsRef<Path>>(path: P, i: i32) -> Result<Sensor> {
         .unwrap_or_else(|_| "".to_string())
         .trim()
         .to_string();
-    sensor.temp = handle(
-        fs::read_to_string(path.as_ref().join(format!("temp{}_input", i)))?
-            .trim()
-            .parse::<f32>(),
-    ) / 1000.;
+    sensor.temp =
+        handle(fs::read_to_string(path.as_ref().join(format!("temp{}_input", i)))?.trim().parse::<f32>()) / 1000.;
 
     Ok(sensor)
 }

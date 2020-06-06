@@ -7,10 +7,7 @@ mod gets {
     use super::*;
     #[test]
     fn cpu_info() {
-        assert_eq!(
-            procfs::_cpu_info(&tests::CPU_INFO),
-            "AMD Ryzen 5 3600 6-Core Processor".to_string()
-        )
+        assert_eq!(procfs::_cpu_info(&tests::CPU_INFO), "AMD Ryzen 5 3600 6-Core Processor".to_string())
     }
     #[test]
     fn total_clock_speed() {
@@ -26,10 +23,7 @@ mod gets {
     }
     #[test]
     fn mem_total() {
-        assert_eq!(
-            procfs::_mem(Memory::MemTotal, &tests::MEM_INFO),
-            16714952704
-        );
+        assert_eq!(procfs::_mem(Memory::MemTotal, &tests::MEM_INFO), 16714952704);
     }
     #[test]
     fn swap_free() {
@@ -45,10 +39,7 @@ mod gets {
             procfs::_ipv4_addr("wlan0", &tests::ROUTE, &tests::FIB_TRIE).unwrap(),
             Ipv4Addr::new(192, 168, 8, 201)
         );
-        assert_eq!(
-            procfs::_ipv4_addr("lo", &tests::ROUTE, &tests::FIB_TRIE).unwrap(),
-            Ipv4Addr::new(127, 0, 0, 1)
-        )
+        assert_eq!(procfs::_ipv4_addr("lo", &tests::ROUTE, &tests::FIB_TRIE).unwrap(), Ipv4Addr::new(127, 0, 0, 1))
     }
     #[test]
     fn ipv6_addr() {
@@ -63,10 +54,7 @@ mod gets {
     }
     #[test]
     fn graphics_card() {
-        assert_eq!(
-            procfs::_graphics_card(&tests::LSPCI),
-            "NVIDIA Corporation GK106 [GeForce GTX 660] (rev a1)"
-        )
+        assert_eq!(procfs::_graphics_card(&tests::LSPCI), "NVIDIA Corporation GK106 [GeForce GTX 660] (rev a1)")
     }
     #[test]
     fn storage_partitions() {
@@ -88,10 +76,7 @@ mod gets {
                 mountpoint: "".to_string(),
             },
         ];
-        assert_eq!(
-            procfs::_storage_partitions("sdd", &tests::STOR_DEV, &tests::STOR_MOUNTS),
-            partitions
-        )
+        assert_eq!(procfs::_storage_partitions("sdd", &tests::STOR_DEV, &tests::STOR_MOUNTS), partitions)
     }
     #[test]
     fn storage_devices() {
@@ -156,35 +141,12 @@ mod gets {
             },
         ];
         let devices = vec![
-            Storage {
-                major: 8,
-                minor: 32,
-                size: 320071851008,
-                name: "sdc".to_string(),
-                partitions: sdc_partitions,
-            },
-            Storage {
-                major: 8,
-                minor: 48,
-                size: 120034123776,
-                name: "sdd".to_string(),
-                partitions: sdd_partitions,
-            },
-            Storage {
-                major: 8,
-                minor: 64,
-                size: 500107862016,
-                name: "sde".to_string(),
-                partitions: sde_partitions,
-            },
+            Storage { major: 8, minor: 32, size: 320071851008, name: "sdc".to_string(), partitions: sdc_partitions },
+            Storage { major: 8, minor: 48, size: 120034123776, name: "sdd".to_string(), partitions: sdd_partitions },
+            Storage { major: 8, minor: 64, size: 500107862016, name: "sde".to_string(), partitions: sde_partitions },
         ];
-        let storages = Storages {
-            storage_devices: devices,
-        };
-        assert_eq!(
-            procfs::_storage_devices(&tests::STOR_DEV, &tests::STOR_MOUNTS),
-            storages
-        );
+        let storages = Storages { storage_devices: devices };
+        assert_eq!(procfs::_storage_devices(&tests::STOR_DEV, &tests::STOR_MOUNTS), storages);
     }
     #[test]
     fn network_devices() {
@@ -221,13 +183,7 @@ mod gets {
             ],
         };
         assert_eq!(
-            procfs::_network_dev(
-                &tests::NET_DEV,
-                &tests::ROUTE,
-                &tests::FIB_TRIE,
-                &tests::IF_INET6
-            )
-            .unwrap(),
+            procfs::_network_devs(&tests::NET_DEV, &tests::ROUTE, &tests::FIB_TRIE, &tests::IF_INET6).unwrap(),
             net_dev
         )
     }
@@ -702,8 +658,7 @@ fe800000000000009879b5d0240418bf 01 40 20 80       lo
 fe80000000000000f17b7100b5a1f781 05 40 20 80     tun0
 00000000000000000000000000000001 01 80 10 80       lo";
 
-static LSPCI: &str =
-    "09:00.0 VGA compatible controller: NVIDIA Corporation GK106 [GeForce GTX 660] (rev a1)";
+static LSPCI: &str = "09:00.0 VGA compatible controller: NVIDIA Corporation GK106 [GeForce GTX 660] (rev a1)";
 
 static STOR_DEV: &str = "major minor  #blocks  name
    8       32  312570167 sdc
